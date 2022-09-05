@@ -102,4 +102,3 @@ PyMODINIT_FUNC PyInit_docscanner(void)
     return module;
 }
 
-

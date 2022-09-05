@@ -77,50 +77,49 @@ static PyObject *DynamsoftDocumentScanner_new(PyTypeObject *type, PyObject *args
     return (PyObject *)self;
 }
 
-// PyObject *createPyList(DLR_ResultArray *pResults)
-// {
-//     int count = pResults->resultsCount;
+PyObject *createPyList(DetectedQuadResultArray *pResults)
+{
+    // Create a Python object to store results
+    PyObject *list = PyList_New(0);
 
-//     // Create a Python object to store results
-//     PyObject *list = PyList_New(0);
-//     for (int i = 0; i < count; i++)
-//     {
-//         DLR_Result *mrzResult = pResults->results[i];
-//         int lCount = mrzResult->lineResultsCount;
-//         for (int j = 0; j < lCount; j++)
-//         {
-//             // printf("Line result %d: %s\n", j, mrzResult->lineResults[j]->text);
+    if (pResults)
+    {
+        int count = pResults->resultsCount;
+    
+        for (int i = 0; i < count; i++)
+        {
+            DetectedQuadResult *quadResult = pResults->detectedQuadResults[i];
+            int confidence = quadResult->confidenceAsDocumentBoundary;
+            DM_Point *points = quadResult->location->points;
+            int x1 = points[0].coordinate[0];
+            int y1 = points[0].coordinate[1];
+            int x2 = points[1].coordinate[0];
+            int y2 = points[1].coordinate[1];
+            int x3 = points[2].coordinate[0];
+            int y3 = points[2].coordinate[1];
+            int x4 = points[3].coordinate[0];
+            int y4 = points[3].coordinate[1];
+            
+            DocumentResult *result = PyObject_New(DocumentResult, &DocumentResultType);
+            result->confidence = Py_BuildValue("i", confidence);
+            result->x1 = Py_BuildValue("i", x1);
+            result->y1 = Py_BuildValue("i", y1);
+            result->x2 = Py_BuildValue("i", x2);
+            result->y2 = Py_BuildValue("i", y2);
+            result->x3 = Py_BuildValue("i", x3);
+            result->y3 = Py_BuildValue("i", y3);
+            result->x4 = Py_BuildValue("i", x4);
+            result->y4 = Py_BuildValue("i", y4);
 
-//             DM_Point *points = mrzResult->lineResults[j]->location.points;
-//             int x1 = points[0].x;
-//             int y1 = points[0].y;
-//             int x2 = points[1].x;
-//             int y2 = points[1].y;
-//             int x3 = points[2].x;
-//             int y3 = points[2].y;
-//             int x4 = points[3].x;
-//             int y4 = points[3].y;
-//             DocumentResult *result = PyObject_New(DocumentResult, &DocumentResultType);
-//             result->confidence = Py_BuildValue("i", mrzResult->lineResults[j]->confidence);
-//             result->text = PyUnicode_FromString(mrzResult->lineResults[j]->text);
-//             result->x1 = Py_BuildValue("i", x1);
-//             result->y1 = Py_BuildValue("i", y1);
-//             result->x2 = Py_BuildValue("i", x2);
-//             result->y2 = Py_BuildValue("i", y2);
-//             result->x3 = Py_BuildValue("i", x3);
-//             result->y3 = Py_BuildValue("i", y3);
-//             result->x4 = Py_BuildValue("i", x4);
-//             result->y4 = Py_BuildValue("i", y4);
+            PyList_Append(list, (PyObject *)result);
+        }
+    }
 
-//             PyList_Append(list, (PyObject *)result);
-//         }
-//     }
-
-//     return list;
-// }
+    return list;
+}
 
 /**
- * Recognize MRZ from image files.
+ * Recognize document from image files.
  *
  * @param string filename
  *
@@ -136,24 +135,25 @@ static PyObject *decodeFile(PyObject *obj, PyObject *args)
         return NULL;
     }
 
-    NormalizedImageResult* normalizedResult = NULL;
-    int ret = DDN_NormalizeFile(self->handler, pFileName, "", NULL, &normalizedResult);
+    DetectedQuadResultArray *pResults = NULL;
+    
+    int ret = DDN_DetectQuadFromFile(self->handler, pFileName, "", &pResults);
     if (ret)
     {
         printf("Detection error: %s\n", DC_GetErrorString(ret));
     }
 
-    PyObject *list = NULL;
+    PyObject *list = createPyList(pResults);
 
     // Release memory
-    if (normalizedResult != NULL)
-        DDN_FreeNormalizedImageResult(&normalizedResult);
+    if (pResults != NULL)
+        DDN_FreeDetectedQuadResultArray(&pResults);
 
     return list;
 }
 
 /**
- * Recognize MRZ from OpenCV Mat.
+ * Recognize document from OpenCV Mat.
  *
  * @param Mat image
  *
@@ -207,29 +207,30 @@ static PyObject *decodeMat(PyObject *obj, PyObject *args)
     data.format = format;
     data.bytesLength = len;
 
-    NormalizedImageResult* normalizedResult = NULL;
-    int ret = DDN_NormalizeBuffer(self->handler, &data, "", NULL, &normalizedResult);
+    DetectedQuadResultArray *pResults = NULL;
+    
+    int ret = DDN_DetectQuadFromBuffer(self->handler, &data, "", &pResults);
     if (ret)
     {
         printf("Detection error: %s\n", DC_GetErrorString(ret));
     }
 
-    PyObject *list = NULL;
+    PyObject *list = createPyList(pResults);
 
     // Release memory
-    if (normalizedResult != NULL)
-        DDN_FreeNormalizedImageResult(&normalizedResult);
+    if (pResults != NULL)
+        DDN_FreeDetectedQuadResultArray(&pResults);
 
     Py_DECREF(memoryview);
 
     return list;
 }
 
-void onResultReady(DynamsoftDocumentScanner *self)
+void onResultReady(DynamsoftDocumentScanner *self, DetectedQuadResultArray *pResults)
 {
     PyGILState_STATE gstate;
     gstate = PyGILState_Ensure();
-    PyObject *list = NULL;
+    PyObject *list = createPyList(pResults);
     PyObject *result = PyObject_CallFunction(self->callback, "O", list);
     if (result != NULL)
         Py_DECREF(result);
@@ -247,23 +248,23 @@ void scan(DynamsoftDocumentScanner *self, unsigned char *buffer, int width, int 
     data.format = format;
     data.bytesLength = len;
 
-    NormalizedImageResult* normalizedResult = NULL;
-    int ret = DDN_NormalizeBuffer(self->handler, &data, "", NULL, &normalizedResult);
+    DetectedQuadResultArray *pResults = NULL;
+    int ret = DDN_DetectQuadFromBuffer(self->handler, &data, "", &pResults);
     if (ret)
     {
         printf("Detection error: %s\n", DC_GetErrorString(ret));
     }
 
-    // Release memory
-    if (normalizedResult != NULL)
-        DDN_FreeNormalizedImageResult(&normalizedResult);
-
     free(buffer);
-    onResultReady(self);
+    onResultReady(self, pResults);
+
+    // Release memory
+    if (pResults != NULL)
+        DDN_FreeDetectedQuadResultArray(&pResults);
 }
 
 /**
- * Recognize MRZ from OpenCV Mat asynchronously.
+ * Recognize document from OpenCV Mat asynchronously.
  *
  * @param Mat image
  *
@@ -346,7 +347,7 @@ void run(DynamsoftDocumentScanner *self)
 }
 
 /**
- * Register callback function to receive MRZ decoding result asynchronously.
+ * Register callback function to receive document decoding result asynchronously.
  */
 static PyObject *addAsyncListener(PyObject *obj, PyObject *args)
 {

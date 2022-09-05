@@ -9,7 +9,6 @@ typedef struct
 {
 	PyObject_HEAD
     PyObject *confidence;
-	PyObject *text;
 	PyObject *x1;
 	PyObject *y1;
 	PyObject *x2;
@@ -23,7 +22,6 @@ typedef struct
 static void DocumentResult_dealloc(DocumentResult *self)
 {
 	if (self->confidence) Py_DECREF(self->confidence);
-    if (self->text) Py_DECREF(self->text);
     if (self->x1) Py_DECREF(self->x1);
     if (self->y1) Py_DECREF(self->y1);
     if (self->x2) Py_DECREF(self->x2);
@@ -45,7 +43,6 @@ static PyObject *DocumentResult_new(PyTypeObject *type, PyObject *args, PyObject
 
 static PyMemberDef DocumentResult_members[] = {
     {"confidence", T_OBJECT_EX, offsetof(DocumentResult, confidence), 0, "confidence"},
-    {"text", T_OBJECT_EX, offsetof(DocumentResult, text), 0, "text"},
     {"x1", T_OBJECT_EX, offsetof(DocumentResult, x1), 0, "x1"},
     {"y1", T_OBJECT_EX, offsetof(DocumentResult, y1), 0, "y1"},
     {"x2", T_OBJECT_EX, offsetof(DocumentResult, x2), 0, "x2"},
