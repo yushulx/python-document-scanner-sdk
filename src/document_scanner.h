@@ -382,12 +382,31 @@ static PyObject *addAsyncListener(PyObject *obj, PyObject *args)
     return Py_BuildValue("i", 0);
 }
 
+static PyObject *setParameters(PyObject *obj, PyObject *args)
+{
+    DynamsoftDocumentScanner *self = (DynamsoftDocumentScanner *)obj;
+
+    const char*params;
+    if (!PyArg_ParseTuple(args, "s", &params))
+    {
+        return NULL;
+    }
+
+    char errorMsgBuffer[512];
+    int ret = DDN_InitRuntimeSettingsFromString(self->handler, params, errorMsgBuffer, 512);
+	printf("Init runtime settings: %s\n", errorMsgBuffer);
+
+    return Py_BuildValue("i", ret);
+}
+
 static PyMethodDef instance_methods[] = {
     {"decodeFile", decodeFile, METH_VARARGS, NULL},
     {"decodeMat", decodeMat, METH_VARARGS, NULL},
     {"addAsyncListener", addAsyncListener, METH_VARARGS, NULL},
     {"decodeMatAsync", decodeMatAsync, METH_VARARGS, NULL},
-    {NULL, NULL, 0, NULL}};
+    {"setParameters", setParameters, METH_VARARGS, NULL},
+    {NULL, NULL, 0, NULL}
+    };
 
 static PyTypeObject DynamsoftDocumentScannerType = {
     PyVarObject_HEAD_INIT(NULL, 0) "docscanner.DynamsoftDocumentScanner", /* tp_name */

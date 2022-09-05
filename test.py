@@ -7,6 +7,65 @@ docscanner.initLicense("DLS2eyJoYW5kc2hha2VDb2RlIjoiMjAwMDAxLTE2NDk4Mjk3OTI2MzUi
 
 scanner = docscanner.createInstance()
 
+p_binary = '''
+{
+    "GlobalParameter":{
+        "Name":"GP"
+    },
+    "ImageParameterArray":[
+        {
+            "Name":"IP-1"
+        }
+    ],
+    "NormalizerParameterArray":[
+        {
+            "Name":"NP-1",
+            "ColourMode": "ICM_BINARY" 
+        }
+    ]
+}
+'''
+
+p_color = '''
+{
+    "GlobalParameter":{
+        "Name":"GP"
+    },
+    "ImageParameterArray":[
+        {
+            "Name":"IP-1"
+        }
+    ],
+    "NormalizerParameterArray":[
+        {
+            "Name":"NP-1",
+            "ColourMode": "ICM_COLOUR" 
+        }
+    ]
+}
+'''
+
+p_grayscale = '''
+{
+    "GlobalParameter":{
+        "Name":"GP"
+    },
+    "ImageParameterArray":[
+        {
+            "Name":"IP-1"
+        }
+    ],
+    "NormalizerParameterArray":[
+        {
+            "Name":"NP-1",
+            "ColourMode": "ICM_BINARY"
+        }
+    ]
+}
+'''
+
+ret = scanner.setParameters(p_binary)
+print(ret)
 # # decodeFile()
 # print('')
 # print('Test decodeFile()')
