@@ -32,6 +32,7 @@ def process_file(filename, scanner):
     
     normalized_image.save(str(time.time()) + '.png')
     print('Image saved')
+    normalized_image.recycle()
 
 def scandocument():
     """

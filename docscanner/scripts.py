@@ -39,6 +39,7 @@ def process_file(filename, scanner):
     
     normalized_image.save(str(time.time()) + '.png')
     print('Image saved')
+    normalized_image.recycle()
     
 def process_video(scanner):
     scanner.addAsyncListener(callback)
@@ -74,8 +75,7 @@ def process_video(scanner):
                 cv2.destroyWindow(data[0])
                 data[1].save(str(time.time()) + '.png')
                 print('Image saved')
-                
-            g_normalized_images = []
+                data[1].recycle()
             
         if image is not None:
             scanner.detectMatAsync(image)
@@ -97,6 +97,10 @@ def process_video(scanner):
         cv2.putText(image, 'Press "s" to save image', (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
         cv2.putText(image, 'Press "ESC" to exit', (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
         cv2.imshow('Document Scanner', image)
+
+    for data in g_normalized_images:
+        data[1].recycle()
+
 
 def scandocument():
     """

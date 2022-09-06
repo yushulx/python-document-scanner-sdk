@@ -35,6 +35,7 @@ for result in results:
     print(x1, y1, x2, y2, x3, y3, x4, y4)
     
     normalized_image = scanner.normalizeFile("images/1.png", x1, y1, x2, y2, x3, y3, x4, y4)
+    normalized_image.recycle()
     # showNormalizedImage("Normalized Image", normalized_image)
     # cv2.drawContours(image, [np.int0([(x1, y1), (x2, y2), (x3, y3), (x4, y4)])], 0, (0, 255, 0), 2)
     
@@ -60,6 +61,7 @@ for result in results:
     
 #     normalized_image = scanner.normalizeBuffer(image, x1, y1, x2, y2, x3, y3, x4, y4)
 #     showNormalizedImage("Normalized Image", normalized_image)
+#     normalized_image.recycle()
 #     cv2.drawContours(image, [np.int0([(x1, y1), (x2, y2), (x3, y3), (x4, y4)])], 0, (0, 255, 0), 2)
     
 # cv2.imshow('Document Image', image)
@@ -130,6 +132,7 @@ for result in results:
 #             cv2.destroyWindow(data[0])
 #             data[1].save(str(time.time()) + '.png')
 #             print('Image saved')
+#             data[1].recycle()
             
 #         g_normalized_images = []
         

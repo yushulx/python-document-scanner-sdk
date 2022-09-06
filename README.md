@@ -289,6 +289,7 @@ $ scandocument -c 1 -l <license-key>
     ```python
     normalized_image.save(<filename>)
     ```
+- `normalized_image.recycle()` # release the memory of the normalized image
 
 ## C/C++ API
 To customize Python API based on C/C++, please refer to the

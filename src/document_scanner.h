@@ -444,6 +444,7 @@ static PyObject *normalizeFile(PyObject *obj, PyObject *args)
     quad.points[3].coordinate[1] = y4;
 
     NormalizedImageResult* normalizedResult = NULL;
+    
     int errorCode = DDN_NormalizeFile(self->handler, pFileName, "", &quad, &normalizedResult);
     if (errorCode != DM_OK)
         printf("%s\r\n", DC_GetErrorString(errorCode));

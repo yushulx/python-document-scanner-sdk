@@ -58,6 +58,19 @@ static PyObject *save(PyObject *obj, PyObject *args)
     return Py_BuildValue("i", -1);
 }
 
+static PyObject *recycle(PyObject *obj, PyObject *args)
+{
+    NormalizedImage *self = (NormalizedImage *)obj;
+
+    if (self->normalizedResult)
+    {
+        DDN_FreeNormalizedImageResult(&self->normalizedResult);
+        self->normalizedResult = NULL;
+    }
+
+    return Py_BuildValue("i", 0);
+}
+
 static PyMemberDef NormalizedImage_members[] = {
     {"bytearray", T_OBJECT_EX, offsetof(NormalizedImage, bytearray), 0, "bytearray"},
     {"length", T_OBJECT_EX, offsetof(NormalizedImage, length), 0, "length"},
@@ -70,6 +83,7 @@ static PyMemberDef NormalizedImage_members[] = {
 
 static PyMethodDef ni_instance_methods[] = {
     {"save", save, METH_VARARGS, NULL},
+    {"recycle", recycle, METH_VARARGS, NULL},
     {NULL, NULL, 0, NULL}
 };
 
