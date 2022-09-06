@@ -55,7 +55,7 @@ def process_video(scanner):
             g_normalized_images = []
             
         if image is not None:
-            scanner.decodeMatAsync(image)
+            scanner.detectMatAsync(image)
         
         if g_results != None:
             for result in g_results:

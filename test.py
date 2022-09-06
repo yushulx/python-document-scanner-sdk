@@ -17,10 +17,10 @@ def showNormalizedImage(name, normalized_image):
     cv2.imshow(name, mat)
     return mat
     
-# decodeFile()
+# detectFile()
 print('')
-print('Test decodeFile()')
-results = scanner.decodeFile("images/1.png")
+print('Test detectFile()')
+results = scanner.detectFile("images/1.png")
 image = cv2.imread("images/1.png")
 for result in results:
     x1 = result.x1
@@ -40,12 +40,12 @@ cv2.imshow('Document Image', image)
 cv2.waitKey(0)
 
 
-# decodeMat()
+# detectMat()
 # print('')
-# print('Test decodeMat()')
+# print('Test detectMat()')
 
 # image = cv2.imread("images/1.png")
-# results = scanner.decodeMat(image)
+# results = scanner.detectMat(image)
 # for result in results:
 #     x1 = result.x1
 #     y1 = result.y1
@@ -63,9 +63,9 @@ cv2.waitKey(0)
 # cv2.imshow('Document Image', image)
 # cv2.waitKey(0)
 
-# decodeMatAsync()
+# detectMatAsync()
 # print('')
-# print('Test decodeMatAsync()')
+# print('Test detectMatAsync()')
 # def callback(results):
 #     for result in results:
 #         x1 = result.x1
@@ -85,7 +85,7 @@ cv2.waitKey(0)
 # import cv2
 # image = cv2.imread("images/1.png")
 # scanner.addAsyncListener(callback)
-# scanner.decodeMatAsync(image)
+# scanner.detectMatAsync(image)
 # sleep(5)
 
 # g_results = None
@@ -132,7 +132,7 @@ cv2.waitKey(0)
 #         g_normalized_images = []
         
 #     if image is not None:
-#         scanner.decodeMatAsync(image)
+#         scanner.detectMatAsync(image)
     
 #     if g_results != None:
 #         for result in g_results:

@@ -126,7 +126,7 @@ PyObject *createPyList(DetectedQuadResultArray *pResults)
  *
  * @return DocumentResult list
  */
-static PyObject *decodeFile(PyObject *obj, PyObject *args)
+static PyObject *detectFile(PyObject *obj, PyObject *args)
 {
     DynamsoftDocumentScanner *self = (DynamsoftDocumentScanner *)obj;
 
@@ -160,7 +160,7 @@ static PyObject *decodeFile(PyObject *obj, PyObject *args)
  *
  * @return DocumentResult list
  */
-static PyObject *decodeMat(PyObject *obj, PyObject *args)
+static PyObject *detectMat(PyObject *obj, PyObject *args)
 {
     DynamsoftDocumentScanner *self = (DynamsoftDocumentScanner *)obj;
 
@@ -270,7 +270,7 @@ void scan(DynamsoftDocumentScanner *self, unsigned char *buffer, int width, int 
  * @param Mat image
  *
  */
-static PyObject *decodeMatAsync(PyObject *obj, PyObject *args)
+static PyObject *detectMatAsync(PyObject *obj, PyObject *args)
 {
     DynamsoftDocumentScanner *self = (DynamsoftDocumentScanner *)obj;
     PyObject *o;
@@ -532,10 +532,10 @@ static PyObject *normalizeBuffer(PyObject *obj, PyObject *args)
 }
 
 static PyMethodDef instance_methods[] = {
-    {"decodeFile", decodeFile, METH_VARARGS, NULL},
-    {"decodeMat", decodeMat, METH_VARARGS, NULL},
+    {"detectFile", detectFile, METH_VARARGS, NULL},
+    {"detectMat", detectMat, METH_VARARGS, NULL},
     {"addAsyncListener", addAsyncListener, METH_VARARGS, NULL},
-    {"decodeMatAsync", decodeMatAsync, METH_VARARGS, NULL},
+    {"detectMatAsync", detectMatAsync, METH_VARARGS, NULL},
     {"setParameters", setParameters, METH_VARARGS, NULL},
     {"normalizeFile", normalizeFile, METH_VARARGS, NULL},
     {"normalizeBuffer", normalizeBuffer, METH_VARARGS, NULL},

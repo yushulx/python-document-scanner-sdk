@@ -19,7 +19,7 @@ def showNormalizedImage(name, normalized_image):
 
 def process_file(filename, scanner):
     image = cv2.imread(filename)
-    results = scanner.decodeMat(image)
+    results = scanner.detectMat(image)
     for result in results:
         x1 = result.x1
         y1 = result.y1
@@ -78,7 +78,7 @@ def process_video(scanner):
             g_normalized_images = []
             
         if image is not None:
-            scanner.decodeMatAsync(image)
+            scanner.detectMatAsync(image)
         
         if g_results != None:
             for result in g_results:

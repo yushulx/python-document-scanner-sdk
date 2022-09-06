@@ -5,13 +5,6 @@ import numpy as np
 import cv2
 import time
 
-g_results = None
-g_normalized_images = []
-
-def callback(results):
-    global g_results
-    g_results = results
-
 def showNormalizedImage(name, normalized_image):
     mat = docscanner.convertNormalizedImage2Mat(normalized_image)
     cv2.imshow(name, mat)
@@ -19,7 +12,7 @@ def showNormalizedImage(name, normalized_image):
 
 def process_file(filename, scanner):
     image = cv2.imread(filename)
-    results = scanner.decodeMat(image)
+    results = scanner.detectMat(image)
     for result in results:
         x1 = result.x1
         y1 = result.y1
