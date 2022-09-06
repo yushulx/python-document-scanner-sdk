@@ -13,6 +13,7 @@ def showNormalizedImage(name, normalized_image):
 def process_file(filename, scanner):
     image = cv2.imread(filename)
     results = scanner.detectMat(image)
+    normalized_image = None
     for result in results:
         x1 = result.x1
         y1 = result.y1
@@ -27,12 +28,16 @@ def process_file(filename, scanner):
         showNormalizedImage("Normalized Image", normalized_image)
         cv2.drawContours(image, [np.int0([(x1, y1), (x2, y2), (x3, y3), (x4, y4)])], 0, (0, 255, 0), 2)
     
+    cv2.putText(image, 'Press "ESC" to exit', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
     cv2.imshow('Document Image', image)
     cv2.waitKey(0)
     
-    normalized_image.save(str(time.time()) + '.png')
-    print('Image saved')
-    normalized_image.recycle()
+    if normalized_image is not None:
+        normalized_image.save(str(time.time()) + '.png')
+        print('Image saved')
+        normalized_image.recycle()
+    else:
+        print('No document found')
 
 def scandocument():
     """

@@ -51,7 +51,7 @@ static int DynamsoftDocumentScanner_clear(DynamsoftDocumentScanner *self)
         self->worker->t.join();
         delete self->worker;
         self->worker = NULL;
-        printf("Quit native thread.\n");
+        // printf("Quit native thread.\n");
     }
 
     return 0;

@@ -83,7 +83,7 @@ class CustomInstall(install):
 
 
 setup(name='document-scanner-sdk',
-      version='1.0.0',
+      version='1.0.1',
       description='Document Scanner SDK for document edge detection, border cropping, perspective correction and brightness adjustment',
       long_description=long_description,
       long_description_content_type="text/markdown",
