@@ -32,12 +32,14 @@ for result in results:
     x4 = result.x4
     y4 = result.y4
     
-    normalized_image = scanner.normalizeFile("images/1.png", x1, y1, x2, y2, x3, y3, x4, y4)
-    showNormalizedImage("Normalized Image", normalized_image)
-    cv2.drawContours(image, [np.int0([(x1, y1), (x2, y2), (x3, y3), (x4, y4)])], 0, (0, 255, 0), 2)
+    print(x1, y1, x2, y2, x3, y3, x4, y4)
     
-cv2.imshow('Document Image', image)
-cv2.waitKey(0)
+    normalized_image = scanner.normalizeFile("images/1.png", x1, y1, x2, y2, x3, y3, x4, y4)
+    # showNormalizedImage("Normalized Image", normalized_image)
+    # cv2.drawContours(image, [np.int0([(x1, y1), (x2, y2), (x3, y3), (x4, y4)])], 0, (0, 255, 0), 2)
+    
+# cv2.imshow('Document Image', image)
+# cv2.waitKey(0)
 
 
 # detectMat()
