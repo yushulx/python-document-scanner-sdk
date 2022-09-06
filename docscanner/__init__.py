@@ -1,6 +1,8 @@
 from .docscanner import * 
 import os
 import json
+import numpy as np
+
 __version__ = version
     
 class ImagePixelFormat:
@@ -31,3 +33,95 @@ class ImagePixelFormat:
     # 24bit with BGR channel order stored in memory from high to low address
     IPF_BGR_888 = 12
 
+def convertNormalizedImage2Mat(normalized_image):
+    bytearray = normalized_image.bytearray
+    width = normalized_image.width
+    height = normalized_image.height
+    
+    channels = 3
+    if normalized_image.format == ImagePixelFormat.IPF_BINARY:
+        channels = 1
+        all = []
+        
+        for byte in bytearray:
+            
+            byteCount = 7
+            while byteCount >= 0:
+                b = (byte & (1 << byteCount)) >> byteCount
+                if b == 1:
+                    all.append(255)
+                else:
+                    all.append(0)
+                    
+                byteCount -= 1
+            
+        bytearray = all
+        width = normalized_image.stride * 8
+        
+    elif normalized_image.format == ImagePixelFormat.IPF_GRAYSCALED:
+        channels = 1
+    
+    mat = np.array(bytearray, dtype=np.uint8).reshape(height, width, channels)
+    
+    return mat
+
+class Templates:
+    binary = '''
+    {
+        "GlobalParameter":{
+            "Name":"GP"
+        },
+        "ImageParameterArray":[
+            {
+                "Name":"IP-1",
+                "NormalizerParameterName":"NP-1"
+            }
+        ],
+        "NormalizerParameterArray":[
+            {
+                "Name":"NP-1",
+                "ColourMode": "ICM_BINARY" 
+            }
+        ]
+    }
+    '''
+
+    color = '''
+    {
+        "GlobalParameter":{
+            "Name":"GP"
+        },
+        "ImageParameterArray":[
+            {
+                "Name":"IP-1",
+                "NormalizerParameterName":"NP-1"
+            }
+        ],
+        "NormalizerParameterArray":[
+            {
+                "Name":"NP-1",
+                "ColourMode": "ICM_COLOUR" 
+            }
+        ]
+    }
+    '''
+
+    grayscale = '''
+    {
+        "GlobalParameter":{
+            "Name":"GP"
+        },
+        "ImageParameterArray":[
+            {
+                "Name":"IP-1",
+                "NormalizerParameterName":"NP-1"
+            }
+        ],
+        "NormalizerParameterArray":[
+            {
+                "Name":"NP-1",
+                "ColourMode": "ICM_GRAYSCALE"
+            }
+        ]
+    }
+    '''

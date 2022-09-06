@@ -14,6 +14,7 @@ typedef struct
 	PyObject *height;
 	PyObject *stride;
 	PyObject *format;
+    NormalizedImageResult* normalizedResult;
 } NormalizedImage;
 
 static void NormalizedImage_dealloc(NormalizedImage *self)
@@ -24,6 +25,7 @@ static void NormalizedImage_dealloc(NormalizedImage *self)
     if (self->height) Py_DECREF(self->height);
     if (self->stride) Py_DECREF(self->stride);
     if (self->format) Py_DECREF(self->format);
+    if (self->normalizedResult) DDN_FreeNormalizedImageResult(&self->normalizedResult);
     Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
@@ -32,7 +34,28 @@ static PyObject *NormalizedImage_new(PyTypeObject *type, PyObject *args, PyObjec
     NormalizedImage *self;
 
     self = (NormalizedImage *)type->tp_alloc(type, 0);
+    self->normalizedResult = NULL;
     return (PyObject *)self;
+}
+
+static PyObject *save(PyObject *obj, PyObject *args)
+{
+    NormalizedImage *self = (NormalizedImage *)obj;
+
+    char *pFileName; // File name
+    if (!PyArg_ParseTuple(args, "s", &pFileName))
+    {
+        return NULL;
+    }
+
+    if (self->normalizedResult)
+    {
+        DDN_SaveImageDataToFile(self->normalizedResult->image, pFileName);
+        printf("Save image to file: %s\n", pFileName);
+        return Py_BuildValue("i", 0);
+    }
+
+    return Py_BuildValue("i", -1);
 }
 
 static PyMemberDef NormalizedImage_members[] = {
@@ -43,6 +66,11 @@ static PyMemberDef NormalizedImage_members[] = {
     {"stride", T_OBJECT_EX, offsetof(NormalizedImage, stride), 0, "stride"},
     {"format", T_OBJECT_EX, offsetof(NormalizedImage, format), 0, "format"},
     {NULL}  /* Sentinel */
+};
+
+static PyMethodDef ni_instance_methods[] = {
+    {"save", save, METH_VARARGS, NULL},
+    {NULL, NULL, 0, NULL}
 };
 
 static PyTypeObject NormalizedImageType = {
@@ -72,7 +100,7 @@ static PyTypeObject NormalizedImageType = {
     0,                                                           /* tp_weaklistoffset */
     0,                                                           /* tp_iter */
     0,                                                           /* tp_iternext */
-    0,                                                           /* tp_methods */
+    ni_instance_methods,                                                           /* tp_methods */
     NormalizedImage_members,                                       /* tp_members */
     0,                                                           /* tp_getset */
     0,                                                           /* tp_base */

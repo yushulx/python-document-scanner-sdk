@@ -9,98 +9,11 @@ docscanner.initLicense("DLS2eyJoYW5kc2hha2VDb2RlIjoiMjAwMDAxLTE2NDk4Mjk3OTI2MzUi
 
 scanner = docscanner.createInstance()
 
-p_binary = '''
-{
-    "GlobalParameter":{
-        "Name":"GP"
-    },
-    "ImageParameterArray":[
-        {
-            "Name":"IP-1",
-            "NormalizerParameterName":"NP-1"
-        }
-    ],
-    "NormalizerParameterArray":[
-        {
-            "Name":"NP-1",
-            "ColourMode": "ICM_BINARY" 
-        }
-    ]
-}
-'''
-
-p_color = '''
-{
-    "GlobalParameter":{
-        "Name":"GP"
-    },
-    "ImageParameterArray":[
-        {
-            "Name":"IP-1",
-            "NormalizerParameterName":"NP-1"
-        }
-    ],
-    "NormalizerParameterArray":[
-        {
-            "Name":"NP-1",
-            "ColourMode": "ICM_COLOUR" 
-        }
-    ]
-}
-'''
-
-p_grayscale = '''
-{
-    "GlobalParameter":{
-        "Name":"GP"
-    },
-    "ImageParameterArray":[
-        {
-            "Name":"IP-1",
-            "NormalizerParameterName":"NP-1"
-        }
-    ],
-    "NormalizerParameterArray":[
-        {
-            "Name":"NP-1",
-            "ColourMode": "ICM_GRAYSCALE"
-        }
-    ]
-}
-'''
-
-ret = scanner.setParameters(p_color)
+ret = scanner.setParameters(docscanner.Templates.color)
 print(ret)
 
 def showNormalizedImage(name, normalized_image):
-    bytearray = normalized_image.bytearray
-    width = normalized_image.width
-    height = normalized_image.height
-    
-    channels = 3
-    if normalized_image.format == docscanner.ImagePixelFormat.IPF_BINARY:
-        channels = 1
-        all = []
-        
-        for byte in bytearray:
-            
-            byteCount = 7
-            while byteCount >= 0:
-                b = (byte & (1 << byteCount)) >> byteCount
-                if b == 1:
-                    all.append(255)
-                else:
-                    all.append(0)
-                    
-                byteCount -= 1
-            
-        bytearray = all
-        width = normalized_image.stride * 8
-        
-    elif normalized_image.format == docscanner.ImagePixelFormat.IPF_GRAYSCALED:
-        channels = 1
-    
-    mat = np.array(bytearray, dtype=np.uint8).reshape(height, width, channels)
+    mat = docscanner.convertNormalizedImage2Mat(normalized_image)
     cv2.imshow(name, mat)
     return mat
     
@@ -187,23 +100,7 @@ scanner.addAsyncListener(callback)
 cap = cv2.VideoCapture(0)
 while True:
     ret, image = cap.read()
-    if image is not None:
-        scanner.decodeMatAsync(image)
     
-    if g_results != None:
-        for result in g_results:
-            x1 = result.x1
-            y1 = result.y1
-            x2 = result.x2
-            y2 = result.y2
-            x3 = result.x3
-            y3 = result.y3
-            x4 = result.x4
-            y4 = result.y4
-            
-            cv2.drawContours(image, [np.int0([(x1, y1), (x2, y2), (x3, y3), (x4, y4)])], 0, (0, 255, 0), 2)
-        
-    cv2.imshow('Document Scanner', image)
     ch = cv2.waitKey(1)
     if ch == 27:
         break
@@ -222,10 +119,32 @@ while True:
                 y4 = result.y4
                 
                 normalized_image = scanner.normalizeBuffer(image, x1, y1, x2, y2, x3, y3, x4, y4)
+                g_normalized_images.append((str(index), normalized_image))
                 mat = showNormalizedImage(str(index), normalized_image)
-                g_normalized_images.append(mat)
                 index += 1
     elif ch == ord('s'): # save image
-        for image in g_normalized_images:
-            cv2.imwrite('images/' + str(time.time()) + '.png', image)
+        for data in g_normalized_images:
+            # cv2.imwrite('images/' + str(time.time()) + '.png', image)
+            cv2.destroyWindow(data[0])
+            data[1].save(str(time.time()) + '.png')
             print('Image saved')
+            
+        g_normalized_images = []
+        
+    if image is not None:
+        scanner.decodeMatAsync(image)
+    
+    if g_results != None:
+        for result in g_results:
+            x1 = result.x1
+            y1 = result.y1
+            x2 = result.x2
+            y2 = result.y2
+            x3 = result.x3
+            y3 = result.y3
+            x4 = result.x4
+            y4 = result.y4
+            
+            cv2.drawContours(image, [np.int0([(x1, y1), (x2, y2), (x3, y3), (x4, y4)])], 0, (0, 255, 0), 2)
+        
+    cv2.imshow('Document Scanner', image)

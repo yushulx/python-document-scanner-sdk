@@ -253,7 +253,7 @@ void scan(DynamsoftDocumentScanner *self, unsigned char *buffer, int width, int 
     int ret = DDN_DetectQuadFromBuffer(self->handler, &data, "", &pResults);
     if (ret)
     {
-        printf("Detection error: %s\n", DC_GetErrorString(ret));
+        // printf("Detection error: %s\n", DC_GetErrorString(ret));
     }
 
     free(buffer);
@@ -400,8 +400,14 @@ static PyObject *setParameters(PyObject *obj, PyObject *args)
     return Py_BuildValue("i", ret);
 }
 
-PyObject *createNormalizedImage(ImageData *imageData)
+PyObject *createNormalizedImage(NormalizedImageResult* normalizedResult)
 {
+    if (normalizedResult == NULL)
+    {
+        return NULL;
+    }
+
+    ImageData *imageData = normalizedResult->image;
     NormalizedImage *ni = PyObject_New(NormalizedImage, &NormalizedImageType);
     ni->bytearray = PyByteArray_FromStringAndSize((const char *)imageData->bytes, imageData->bytesLength);
     ni->length = Py_BuildValue("i", imageData->bytesLength);
@@ -409,6 +415,7 @@ PyObject *createNormalizedImage(ImageData *imageData)
     ni->height = Py_BuildValue("i", imageData->height);
     ni->stride = Py_BuildValue("i", imageData->stride);
     ni->format = Py_BuildValue("i", imageData->format);
+    ni->normalizedResult = normalizedResult;
     return (PyObject *)ni;
 }
 /**
@@ -442,12 +449,7 @@ static PyObject *normalizeFile(PyObject *obj, PyObject *args)
     if (errorCode != DM_OK)
         printf("%s\r\n", DC_GetErrorString(errorCode));
 
-    ImageData *imageData = normalizedResult->image;
-
-    PyObject *normalizedImage = createNormalizedImage(imageData);
-
-    if (normalizedResult != NULL)
-        DDN_FreeNormalizedImageResult(&normalizedResult);
+    PyObject *normalizedImage = createNormalizedImage(normalizedResult);
 
     return normalizedImage;
 }
@@ -523,12 +525,7 @@ static PyObject *normalizeBuffer(PyObject *obj, PyObject *args)
     if (errorCode != DM_OK)
         printf("%s\r\n", DC_GetErrorString(errorCode));
 
-    ImageData *imageData = normalizedResult->image;
-
-    PyObject *normalizedImage = createNormalizedImage(imageData);
-
-    if (normalizedResult != NULL)
-        DDN_FreeNormalizedImageResult(&normalizedResult);
+    PyObject *normalizedImage = createNormalizedImage(normalizedResult);
 
     Py_DECREF(memoryview);
 
