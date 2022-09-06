@@ -101,4 +101,3 @@ PyMODINIT_FUNC PyInit_docscanner(void)
 	PyModule_AddStringConstant(module, "version", DDN_GetVersion());
     return module;
 }
-
