@@ -5,6 +5,7 @@
 #include <structmember.h>
 #include "DynamsoftDocumentNormalizer.h"
 #include "document_result.h"
+#include "normalized_image.h"
 #include <thread>
 #include <condition_variable>
 #include <mutex>
@@ -399,12 +400,149 @@ static PyObject *setParameters(PyObject *obj, PyObject *args)
     return Py_BuildValue("i", ret);
 }
 
+PyObject *createNormalizedImage(ImageData *imageData)
+{
+    NormalizedImage *ni = PyObject_New(NormalizedImage, &NormalizedImageType);
+    ni->bytearray = PyByteArray_FromStringAndSize((const char *)imageData->bytes, imageData->bytesLength);
+    ni->length = Py_BuildValue("i", imageData->bytesLength);
+    ni->width = Py_BuildValue("i", imageData->width);
+    ni->height = Py_BuildValue("i", imageData->height);
+    ni->stride = Py_BuildValue("i", imageData->stride);
+    ni->format = Py_BuildValue("i", imageData->format);
+    return (PyObject *)ni;
+}
+/**
+ * Normalize the document.
+ *
+ * @param string filePath
+ *
+ * @return Normalized document image
+ */
+static PyObject *normalizeFile(PyObject *obj, PyObject *args)
+{
+    DynamsoftDocumentScanner *self = (DynamsoftDocumentScanner *)obj;
+
+    char *pFileName; 
+    int x1, y1, x2, y2, x3, y3, x4, y4;
+    if (!PyArg_ParseTuple(args, "siiiiiiii", &pFileName, &x1, &y1, &x2, &y2, &x3, &y3, &x4, &y4))
+        return NULL;
+
+    Quadrilateral quad;
+    quad.points[0].coordinate[0] = x1;
+    quad.points[0].coordinate[1] = y1;
+    quad.points[1].coordinate[0] = x2;
+    quad.points[1].coordinate[1] = y2;
+    quad.points[2].coordinate[0] = x3;
+    quad.points[2].coordinate[1] = y3;
+    quad.points[3].coordinate[0] = x4;
+    quad.points[3].coordinate[1] = y4;
+
+    NormalizedImageResult* normalizedResult = NULL;
+    int errorCode = DDN_NormalizeFile(self->handler, pFileName, "", &quad, &normalizedResult);
+    if (errorCode != DM_OK)
+        printf("%s\r\n", DC_GetErrorString(errorCode));
+
+    ImageData *imageData = normalizedResult->image;
+
+    PyObject *normalizedImage = createNormalizedImage(imageData);
+
+    if (normalizedResult != NULL)
+        DDN_FreeNormalizedImageResult(&normalizedResult);
+
+    return normalizedImage;
+}
+
+/**
+ * Normalize the document.
+ *
+ * @param Mat image
+ *
+ * @return Normalized document image
+ */
+static PyObject *normalizeBuffer(PyObject *obj, PyObject *args)
+{
+    DynamsoftDocumentScanner *self = (DynamsoftDocumentScanner *)obj;
+
+    PyObject *o;
+    int x1, y1, x2, y2, x3, y3, x4, y4;
+    if (!PyArg_ParseTuple(args, "Oiiiiiiii", &o, &x1, &y1, &x2, &y2, &x3, &y3, &x4, &y4))
+        return NULL;
+
+    Py_buffer *view;
+    int nd;
+    PyObject *memoryview = PyMemoryView_FromObject(o);
+    if (memoryview == NULL)
+    {
+        PyErr_Clear();
+        return NULL;
+    }
+
+    view = PyMemoryView_GET_BUFFER(memoryview);
+    char *buffer = (char *)view->buf;
+    nd = view->ndim;
+    int len = view->len;
+    int stride = view->strides[0];
+    int width = view->strides[0] / view->strides[1];
+    int height = len / stride;
+
+    ImagePixelFormat format = IPF_RGB_888;
+
+    if (width == stride)
+    {
+        format = IPF_GRAYSCALED;
+    }
+    else if (width * 3 == stride)
+    {
+        format = IPF_RGB_888;
+    }
+    else if (width * 4 == stride)
+    {
+        format = IPF_ARGB_8888;
+    }
+
+    ImageData data;
+    data.bytes = (unsigned char *)buffer;
+    data.width = width;
+    data.height = height;
+    data.stride = stride;
+    data.format = format;
+    data.bytesLength = len;
+
+    Quadrilateral quad;
+    quad.points[0].coordinate[0] = x1;
+    quad.points[0].coordinate[1] = y1;
+    quad.points[1].coordinate[0] = x2;
+    quad.points[1].coordinate[1] = y2;
+    quad.points[2].coordinate[0] = x3;
+    quad.points[2].coordinate[1] = y3;
+    quad.points[3].coordinate[0] = x4;
+    quad.points[3].coordinate[1] = y4;
+
+    NormalizedImageResult* normalizedResult = NULL;
+    int errorCode = DDN_NormalizeBuffer(self->handler, &data, "", &quad, &normalizedResult);
+    if (errorCode != DM_OK)
+        printf("%s\r\n", DC_GetErrorString(errorCode));
+
+    ImageData *imageData = normalizedResult->image;
+
+    PyObject *normalizedImage = createNormalizedImage(imageData);
+
+    if (normalizedResult != NULL)
+        DDN_FreeNormalizedImageResult(&normalizedResult);
+
+    Py_DECREF(memoryview);
+
+   return normalizedImage;
+}
+
 static PyMethodDef instance_methods[] = {
     {"decodeFile", decodeFile, METH_VARARGS, NULL},
     {"decodeMat", decodeMat, METH_VARARGS, NULL},
     {"addAsyncListener", addAsyncListener, METH_VARARGS, NULL},
     {"decodeMatAsync", decodeMatAsync, METH_VARARGS, NULL},
     {"setParameters", setParameters, METH_VARARGS, NULL},
+    {"normalizeFile", normalizeFile, METH_VARARGS, NULL},
+    {"normalizeBuffer", normalizeBuffer, METH_VARARGS, NULL},
     {NULL, NULL, 0, NULL}
     };
 
