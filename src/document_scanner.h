@@ -379,7 +379,6 @@ static PyObject *addAsyncListener(PyObject *obj, PyObject *args)
         self->worker->t = std::thread(&run, self);
     }
 
-    printf("Running native thread...\n");
     return Py_BuildValue("i", 0);
 }
 

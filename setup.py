@@ -116,7 +116,7 @@ setup(name='document-scanner-sdk',
           "Topic :: Scientific/Engineering",
           "Topic :: Software Development",
       ],
-      install_requires=['opencv-python', 'mrz'],
+      install_requires=['opencv-python'],
       entry_points={
           'console_scripts': ['scandocument=docscanner.scripts:scandocument']
       },

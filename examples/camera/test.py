@@ -16,29 +16,6 @@ def showNormalizedImage(name, normalized_image):
     mat = docscanner.convertNormalizedImage2Mat(normalized_image)
     cv2.imshow(name, mat)
     return mat
-
-def process_file(filename, scanner):
-    image = cv2.imread(filename)
-    results = scanner.decodeMat(image)
-    for result in results:
-        x1 = result.x1
-        y1 = result.y1
-        x2 = result.x2
-        y2 = result.y2
-        x3 = result.x3
-        y3 = result.y3
-        x4 = result.x4
-        y4 = result.y4
-        
-        normalized_image = scanner.normalizeBuffer(image, x1, y1, x2, y2, x3, y3, x4, y4)
-        showNormalizedImage("Normalized Image", normalized_image)
-        cv2.drawContours(image, [np.int0([(x1, y1), (x2, y2), (x3, y3), (x4, y4)])], 0, (0, 255, 0), 2)
-    
-    cv2.imshow('Document Image', image)
-    cv2.waitKey(0)
-    
-    normalized_image.save(str(time.time()) + '.png')
-    print('Image saved')
     
 def process_video(scanner):
     scanner.addAsyncListener(callback)
@@ -100,20 +77,18 @@ def process_video(scanner):
 
 def scandocument():
     """
-    Command-line script for scanning documents from a given image or camera video stream.
+    Command-line script for scanning documents from camera video stream.
     """
-    parser = argparse.ArgumentParser(description='Scan documents from an image file or camera')
-    parser.add_argument('-f', '--file', help='Path to the image file')
+    parser = argparse.ArgumentParser(description='Scan documents from camera')
     parser.add_argument('-c', '--camera', default=False, type=bool, help='Whether to show the image')
     parser.add_argument('-l', '--license', default='', type=str, help='Set a valid license key')
     args = parser.parse_args()
     # print(args)
     try:
-        filename = args.file
         license = args.license
         camera = args.camera
         
-        if filename is None and camera is False:
+        if camera is False:
             parser.print_help()
             return
         
@@ -127,11 +102,11 @@ def scandocument():
         scanner = docscanner.createInstance()
         ret = scanner.setParameters(docscanner.Templates.color)
 
-        if filename is not None:
-            process_file(filename, scanner)
-        elif camera is True:
+        if camera is True:
             process_video(scanner)
             
     except Exception as err:
         print(err)
         sys.exit(1)
+
+scandocument()
