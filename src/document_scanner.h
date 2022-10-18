@@ -12,12 +12,19 @@
 #include <queue>
 #include <functional>
 
+class Task
+{
+public:
+    std::function<void()> func;
+    unsigned char* buffer;
+};
+
 class WorkerThread
 {
 public:
     std::mutex m;
     std::condition_variable cv;
-    std::queue<std::function<void()>> tasks = {};
+    std::queue<Task> tasks = {};
     volatile bool running;
 	std::thread t;
 };
@@ -30,7 +37,19 @@ typedef struct
     WorkerThread *worker;
 } DynamsoftDocumentScanner;
 
-static int DynamsoftDocumentScanner_clear(DynamsoftDocumentScanner *self)
+void clearTasks(DynamsoftDocumentScanner *self)
+{
+    if (self->worker->tasks.size() > 0)
+    {
+        for (int i = 0; i < self->worker->tasks.size(); i++)
+        {
+            free(self->worker->tasks.front().buffer);
+            self->worker->tasks.pop();
+        }
+    }
+}
+
+void clear(DynamsoftDocumentScanner *self)
 {
     if (self->callback)
     {
@@ -38,22 +57,27 @@ static int DynamsoftDocumentScanner_clear(DynamsoftDocumentScanner *self)
         self->callback = NULL;
     }
 
+    if (self->worker)
+    {
+        self->worker->running = false;
+        clearTasks(self);
+        self->worker->cv.notify_one();
+        self->worker->t.join();
+        delete self->worker;
+        self->worker = NULL;
+        printf("Quit native thread.\n");
+    }
+}
+
+static int DynamsoftDocumentScanner_clear(DynamsoftDocumentScanner *self)
+{
+    clear(self);
+
     if (self->handler)
     {
         DDN_DestroyInstance(self->handler);
         self->handler = NULL;
     }
-
-    if (self->worker)
-    {
-        self->worker->running = false;
-        self->worker->cv.notify_one();
-        self->worker->t.join();
-        delete self->worker;
-        self->worker = NULL;
-        // printf("Quit native thread.\n");
-    }
-
     return 0;
 }
 
@@ -253,7 +277,7 @@ void scan(DynamsoftDocumentScanner *self, unsigned char *buffer, int width, int 
     int ret = DDN_DetectQuadFromBuffer(self->handler, &data, "", &pResults);
     if (ret)
     {
-        // printf("Detection error: %s\n", DC_GetErrorString(ret));
+        printf("Detection error: %s\n", DC_GetErrorString(ret));
     }
 
     free(buffer);
@@ -278,7 +302,7 @@ static PyObject *detectMatAsync(PyObject *obj, PyObject *args)
     DynamsoftDocumentScanner *self = (DynamsoftDocumentScanner *)obj;
     PyObject *o;
     if (!PyArg_ParseTuple(args, "O", &o))
-        return NULL;
+        return Py_BuildValue("i", -1);
 
     Py_buffer *view;
     int nd;
@@ -286,7 +310,7 @@ static PyObject *detectMatAsync(PyObject *obj, PyObject *args)
     if (memoryview == NULL)
     {
         PyErr_Clear();
-        return NULL;
+        return Py_BuildValue("i", -1);
     }
 
     view = PyMemoryView_GET_BUFFER(memoryview);
@@ -316,13 +340,12 @@ static PyObject *detectMatAsync(PyObject *obj, PyObject *args)
     memcpy(data, buffer, len);
 
     std::unique_lock<std::mutex> lk(self->worker->m);
-    if (self->worker->tasks.size() > 1)
-    {
-        std::queue<std::function<void()>> empty = {};
-        std::swap(self->worker->tasks, empty);
-    }
+    clearTasks(self);
     std::function<void()> task_function = std::bind(scan, self, data, width, height, stride, format, len);
-    self->worker->tasks.push(task_function);
+    Task task;
+    task.func = task_function;
+    task.buffer = data;
+    self->worker->tasks.push(task);
     self->worker->cv.notify_one();
     lk.unlock();
     
@@ -342,7 +365,7 @@ void run(DynamsoftDocumentScanner *self)
 		{
 			break;
 		}
-        task = std::move(self->worker->tasks.front());
+        task = std::move(self->worker->tasks.front().func);
         self->worker->tasks.pop();
         lk.unlock();
 
@@ -382,6 +405,16 @@ static PyObject *addAsyncListener(PyObject *obj, PyObject *args)
         self->worker->t = std::thread(&run, self);
     }
 
+    return Py_BuildValue("i", 0);
+}
+
+/**
+ * Clear native thread and tasks.
+ */
+static PyObject *clearAsyncListener(PyObject *obj, PyObject *args)
+{
+    DynamsoftDocumentScanner *self = (DynamsoftDocumentScanner *)obj;
+    clear(self);
     return Py_BuildValue("i", 0);
 }
 
@@ -543,6 +576,7 @@ static PyMethodDef instance_methods[] = {
     {"setParameters", setParameters, METH_VARARGS, NULL},
     {"normalizeFile", normalizeFile, METH_VARARGS, NULL},
     {"normalizeBuffer", normalizeBuffer, METH_VARARGS, NULL},
+    {"clearAsyncListener", clearAsyncListener, METH_VARARGS, NULL},
     {NULL, NULL, 0, NULL}
     };
 

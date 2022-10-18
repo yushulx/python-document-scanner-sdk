@@ -290,7 +290,7 @@ $ scandocument -c 1 -l <license-key>
     normalized_image.save(<filename>)
     ```
 - `normalized_image.recycle()` # release the memory of the normalized image
-
+- `clearAsyncListener()` # stop the native thread and clear the registered Python function
 ## C/C++ API
 To customize Python API based on C/C++, please refer to the
 [online documentation](https://www.dynamsoft.com/document-normalizer/docs/programming/c/api-reference/?ver=latest).

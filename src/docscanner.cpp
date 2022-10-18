@@ -46,7 +46,7 @@ static PyObject *createInstance(PyObject *obj, PyObject *args)
     reader->callback = NULL;
     return (PyObject *)reader;
 }
-
+    
 static PyObject *initLicense(PyObject *obj, PyObject *args)
 {
     char *pszLicense;
@@ -101,3 +101,4 @@ PyMODINIT_FUNC PyInit_docscanner(void)
 	PyModule_AddStringConstant(module, "version", DDN_GetVersion());
     return module;
 }
+
