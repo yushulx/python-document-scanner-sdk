@@ -257,7 +257,10 @@ void scan(DynamsoftDocumentScanner *self, unsigned char *buffer, int width, int 
     }
 
     free(buffer);
-    onResultReady(self, pResults);
+    if (self->callback != NULL)
+    {
+        onResultReady(self, pResults);
+    }
 
     // Release memory
     if (pResults != NULL)
