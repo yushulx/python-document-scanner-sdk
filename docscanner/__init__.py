@@ -34,6 +34,7 @@ class ImagePixelFormat:
     IPF_BGR_888 = 12
 
 def convertNormalizedImage2Mat(normalized_image):
+    
     bytearray = normalized_image.bytearray
     width = normalized_image.width
     height = normalized_image.height
@@ -42,21 +43,30 @@ def convertNormalizedImage2Mat(normalized_image):
     if normalized_image.format == ImagePixelFormat.IPF_BINARY:
         channels = 1
         all = []
+        skip = normalized_image.stride * 8 - width
         
+        index = 0
+        n = 1
         for byte in bytearray:
             
             byteCount = 7
             while byteCount >= 0:
                 b = (byte & (1 << byteCount)) >> byteCount
-                if b == 1:
-                    all.append(255)
-                else:
-                    all.append(0)
+                
+                if index < normalized_image.stride * 8 * n - skip: 
+                    if b == 1:
+                        all.append(255)
+                    else:
+                        all.append(0)
                     
                 byteCount -= 1
-            
-        bytearray = all
-        width = normalized_image.stride * 8
+                index += 1
+                
+            if index == normalized_image.stride * 8 * n:
+                n += 1
+                
+        mat = np.array(all, dtype=np.uint8).reshape(height, width, channels)
+        return mat
         
     elif normalized_image.format == ImagePixelFormat.IPF_GRAYSCALED:
         channels = 1

@@ -9,7 +9,7 @@ docscanner.initLicense("DLS2eyJoYW5kc2hha2VDb2RlIjoiMjAwMDAxLTE2NDk4Mjk3OTI2MzUi
 
 scanner = docscanner.createInstance()
 
-ret = scanner.setParameters(docscanner.Templates.color)
+ret = scanner.setParameters(docscanner.Templates.binary)
 print(ret)
 
 def showNormalizedImage(name, normalized_image):
@@ -100,5 +100,4 @@ def test_detectMatAsync():
     scanner.detectMatAsync(image)
     sleep(3)
 
-
-
+test_detectFile()
