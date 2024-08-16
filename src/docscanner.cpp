@@ -8,11 +8,12 @@
 
 #define INITERROR return NULL
 
-struct module_state {
+struct module_state
+{
     PyObject *error;
 };
 
-#define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
+#define GETSTATE(m) ((struct module_state *)PyModule_GetState(m))
 
 static PyObject *
 error_out(PyObject *m)
@@ -38,15 +39,21 @@ error_out(PyObject *m)
 static PyObject *createInstance(PyObject *obj, PyObject *args)
 {
     if (PyType_Ready(&DynamsoftDocumentScannerType) < 0)
-         INITERROR;
+        INITERROR;
 
-    DynamsoftDocumentScanner* reader = PyObject_New(DynamsoftDocumentScanner, &DynamsoftDocumentScannerType);
+    PyObject *reader_obj = PyObject_CallObject((PyObject *)&DynamsoftDocumentScannerType, args);
+
+    if (!reader_obj)
+    {
+        return NULL;
+    }
+
+    DynamsoftDocumentScanner *reader = (DynamsoftDocumentScanner *)reader_obj;
+
     reader->handler = DDN_CreateInstance();
-    reader->worker = NULL;
-    reader->callback = NULL;
     return (PyObject *)reader;
 }
-    
+
 static PyObject *initLicense(PyObject *obj, PyObject *args)
 {
     char *pszLicense;
@@ -56,49 +63,45 @@ static PyObject *initLicense(PyObject *obj, PyObject *args)
     }
 
     char errorMsgBuffer[512];
-	// Click https://www.dynamsoft.com/customer/license/trialLicense/?product=dbr to get a trial license.
-	int ret = DC_InitLicense(pszLicense, errorMsgBuffer, 512);
-	printf("DC_InitLicense: %s\n", errorMsgBuffer);
+    // Click https://www.dynamsoft.com/customer/license/trialLicense/?product=dbr to get a trial license.
+    int ret = DC_InitLicense(pszLicense, errorMsgBuffer, 512);
+    printf("DC_InitLicense: %s\n", errorMsgBuffer);
 
     return Py_BuildValue("i", ret);
 }
 
 static PyMethodDef docscanner_methods[] = {
-  {"initLicense", initLicense, METH_VARARGS, "Set license to activate the SDK"},
-  {"createInstance", createInstance, METH_VARARGS, "Create Dynamsoft MRZ Reader object"},
-  {NULL, NULL, 0, NULL}       
-};
+    {"initLicense", initLicense, METH_VARARGS, "Set license to activate the SDK"},
+    {"createInstance", createInstance, METH_VARARGS, "Create Dynamsoft Document Normalizer object"},
+    {NULL, NULL, 0, NULL}};
 
 static struct PyModuleDef docscanner_module_def = {
-  PyModuleDef_HEAD_INIT,
-  "docscanner",
-  "Internal \"docscanner\" module",
-  -1,
-  docscanner_methods
-};
+    PyModuleDef_HEAD_INIT,
+    "docscanner",
+    "Internal \"docscanner\" module",
+    -1,
+    docscanner_methods};
 
 // https://docs.python.org/3/c-api/module.html
 // https://docs.python.org/3/c-api/dict.html
 PyMODINIT_FUNC PyInit_docscanner(void)
 {
-	PyObject *module = PyModule_Create(&docscanner_module_def);
+    PyObject *module = PyModule_Create(&docscanner_module_def);
     if (module == NULL)
         INITERROR;
 
-    
     if (PyType_Ready(&DynamsoftDocumentScannerType) < 0)
-       INITERROR;
+        INITERROR;
 
     Py_INCREF(&DynamsoftDocumentScannerType);
     PyModule_AddObject(module, "DynamsoftDocumentScanner", (PyObject *)&DynamsoftDocumentScannerType);
-    
+
     if (PyType_Ready(&DocumentResultType) < 0)
-       INITERROR;
+        INITERROR;
 
     Py_INCREF(&DocumentResultType);
     PyModule_AddObject(module, "DocumentResult", (PyObject *)&DocumentResultType);
 
-	PyModule_AddStringConstant(module, "version", DDN_GetVersion());
+    PyModule_AddStringConstant(module, "version", DDN_GetVersion());
     return module;
 }
-

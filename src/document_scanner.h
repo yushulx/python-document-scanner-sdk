@@ -12,11 +12,28 @@
 #include <queue>
 #include <functional>
 
+#if !defined(_WIN32) && !defined(_WIN64)
+#include <sys/time.h>
+#include <atomic>
+
+int gettime()
+{
+    struct timeval time;
+    gettimeofday(&time, NULL);
+    return (int)(time.tv_sec * 1000 * 1000 + time.tv_usec) / 1000;
+}
+#else
+int gettime()
+{
+    return (int)(GetTickCount());
+}
+#endif
+
 class Task
 {
 public:
     std::function<void()> func;
-    unsigned char* buffer;
+    unsigned char *buffer;
 };
 
 class WorkerThread
@@ -25,27 +42,23 @@ public:
     std::mutex m;
     std::condition_variable cv;
     std::queue<Task> tasks = {};
-    volatile bool running;
-	std::thread t;
+    std::atomic<bool> running;
+    std::thread t;
 };
 
 typedef struct
 {
-    PyObject_HEAD 
-    void *handler;
+    PyObject_HEAD void *handler;
     PyObject *callback;
     WorkerThread *worker;
 } DynamsoftDocumentScanner;
 
 void clearTasks(DynamsoftDocumentScanner *self)
 {
-    if (self->worker->tasks.size() > 0)
+    while (!self->worker->tasks.empty())
     {
-        for (int i = 0; i < self->worker->tasks.size(); i++)
-        {
-            free(self->worker->tasks.front().buffer);
-            self->worker->tasks.pop();
-        }
+        free(self->worker->tasks.front().buffer);
+        self->worker->tasks.pop();
     }
 }
 
@@ -59,9 +72,12 @@ void clear(DynamsoftDocumentScanner *self)
 
     if (self->worker)
     {
+        std::unique_lock<std::mutex> lk(self->worker->m);
         self->worker->running = false;
         clearTasks(self);
         self->worker->cv.notify_one();
+        lk.unlock();
+
         self->worker->t.join();
         delete self->worker;
         self->worker = NULL;
@@ -110,7 +126,7 @@ PyObject *createPyList(DetectedQuadResultArray *pResults)
     if (pResults)
     {
         int count = pResults->resultsCount;
-    
+
         for (int i = 0; i < count; i++)
         {
             DetectedQuadResult *quadResult = pResults->detectedQuadResults[i];
@@ -124,7 +140,7 @@ PyObject *createPyList(DetectedQuadResultArray *pResults)
             int y3 = points[2].coordinate[1];
             int x4 = points[3].coordinate[0];
             int y4 = points[3].coordinate[1];
-            
+
             DocumentResult *result = PyObject_New(DocumentResult, &DocumentResultType);
             result->confidence = Py_BuildValue("i", confidence);
             result->x1 = Py_BuildValue("i", x1);
@@ -161,7 +177,7 @@ static PyObject *detectFile(PyObject *obj, PyObject *args)
     }
 
     DetectedQuadResultArray *pResults = NULL;
-    
+
     int ret = DDN_DetectQuadFromFile(self->handler, pFileName, "", &pResults);
     if (ret)
     {
@@ -233,7 +249,7 @@ static PyObject *detectMat(PyObject *obj, PyObject *args)
     data.bytesLength = len;
 
     DetectedQuadResultArray *pResults = NULL;
-    
+
     int ret = DDN_DetectQuadFromBuffer(self->handler, &data, "", &pResults);
     if (ret)
     {
@@ -339,16 +355,19 @@ static PyObject *detectMatAsync(PyObject *obj, PyObject *args)
     unsigned char *data = (unsigned char *)malloc(len);
     memcpy(data, buffer, len);
 
-    std::unique_lock<std::mutex> lk(self->worker->m);
-    clearTasks(self);
-    std::function<void()> task_function = std::bind(scan, self, data, width, height, stride, format, len);
-    Task task;
-    task.func = task_function;
-    task.buffer = data;
-    self->worker->tasks.push(task);
-    self->worker->cv.notify_one();
-    lk.unlock();
-    
+    if (self->worker != nullptr)
+    {
+        std::unique_lock<std::mutex> lk(self->worker->m);
+        clearTasks(self);
+        std::function<void()> task_function = std::bind(scan, self, data, width, height, stride, format, len);
+        Task task;
+        task.func = task_function;
+        task.buffer = data;
+        self->worker->tasks.push(task);
+        self->worker->cv.notify_one();
+        lk.unlock();
+    }
+
     Py_DECREF(memoryview);
     return Py_BuildValue("i", 0);
 }
@@ -362,9 +381,9 @@ void run(DynamsoftDocumentScanner *self)
         self->worker->cv.wait(lk, [&]
                               { return !self->worker->tasks.empty() || !self->worker->running; });
         if (!self->worker->running)
-		{
-			break;
-		}
+        {
+            break;
+        }
         task = std::move(self->worker->tasks.front().func);
         self->worker->tasks.pop();
         lk.unlock();
@@ -400,6 +419,7 @@ static PyObject *addAsyncListener(PyObject *obj, PyObject *args)
 
     if (self->worker == NULL)
     {
+        printf("Running native thread...\n");
         self->worker = new WorkerThread();
         self->worker->running = true;
         self->worker->t = std::thread(&run, self);
@@ -422,7 +442,7 @@ static PyObject *setParameters(PyObject *obj, PyObject *args)
 {
     DynamsoftDocumentScanner *self = (DynamsoftDocumentScanner *)obj;
 
-    const char*params;
+    const char *params;
     if (!PyArg_ParseTuple(args, "s", &params))
     {
         return NULL;
@@ -430,12 +450,12 @@ static PyObject *setParameters(PyObject *obj, PyObject *args)
 
     char errorMsgBuffer[512];
     int ret = DDN_InitRuntimeSettingsFromString(self->handler, params, errorMsgBuffer, 512);
-	printf("Init runtime settings: %s\n", errorMsgBuffer);
+    printf("Init runtime settings: %s\n", errorMsgBuffer);
 
     return Py_BuildValue("i", ret);
 }
 
-PyObject *createNormalizedImage(NormalizedImageResult* normalizedResult)
+PyObject *createNormalizedImage(NormalizedImageResult *normalizedResult)
 {
     if (normalizedResult == NULL)
     {
@@ -464,7 +484,7 @@ static PyObject *normalizeFile(PyObject *obj, PyObject *args)
 {
     DynamsoftDocumentScanner *self = (DynamsoftDocumentScanner *)obj;
 
-    char *pFileName; 
+    char *pFileName;
     int x1, y1, x2, y2, x3, y3, x4, y4;
     if (!PyArg_ParseTuple(args, "siiiiiiii", &pFileName, &x1, &y1, &x2, &y2, &x3, &y3, &x4, &y4))
         return NULL;
@@ -479,8 +499,8 @@ static PyObject *normalizeFile(PyObject *obj, PyObject *args)
     quad.points[3].coordinate[0] = x4;
     quad.points[3].coordinate[1] = y4;
 
-    NormalizedImageResult* normalizedResult = NULL;
-    
+    NormalizedImageResult *normalizedResult = NULL;
+
     int errorCode = DDN_NormalizeFile(self->handler, pFileName, "", &quad, &normalizedResult);
     if (errorCode != DM_OK)
         printf("%s\r\n", DC_GetErrorString(errorCode));
@@ -556,7 +576,7 @@ static PyObject *normalizeBuffer(PyObject *obj, PyObject *args)
     quad.points[3].coordinate[0] = x4;
     quad.points[3].coordinate[1] = y4;
 
-    NormalizedImageResult* normalizedResult = NULL;
+    NormalizedImageResult *normalizedResult = NULL;
     int errorCode = DDN_NormalizeBuffer(self->handler, &data, "", &quad, &normalizedResult);
     if (errorCode != DM_OK)
         printf("%s\r\n", DC_GetErrorString(errorCode));
@@ -565,7 +585,7 @@ static PyObject *normalizeBuffer(PyObject *obj, PyObject *args)
 
     Py_DECREF(memoryview);
 
-   return normalizedImage;
+    return normalizedImage;
 }
 
 static PyMethodDef instance_methods[] = {
@@ -577,46 +597,45 @@ static PyMethodDef instance_methods[] = {
     {"normalizeFile", normalizeFile, METH_VARARGS, NULL},
     {"normalizeBuffer", normalizeBuffer, METH_VARARGS, NULL},
     {"clearAsyncListener", clearAsyncListener, METH_VARARGS, NULL},
-    {NULL, NULL, 0, NULL}
-    };
+    {NULL, NULL, 0, NULL}};
 
 static PyTypeObject DynamsoftDocumentScannerType = {
     PyVarObject_HEAD_INIT(NULL, 0) "docscanner.DynamsoftDocumentScanner", /* tp_name */
     sizeof(DynamsoftDocumentScanner),                                     /* tp_basicsize */
-    0,                                                              /* tp_itemsize */
+    0,                                                                    /* tp_itemsize */
     (destructor)DynamsoftDocumentScanner_dealloc,                         /* tp_dealloc */
-    0,                                                              /* tp_print */
-    0,                                                              /* tp_getattr */
-    0,                                                              /* tp_setattr */
-    0,                                                              /* tp_reserved */
-    0,                                                              /* tp_repr */
-    0,                                                              /* tp_as_number */
-    0,                                                              /* tp_as_sequence */
-    0,                                                              /* tp_as_mapping */
-    0,                                                              /* tp_hash  */
-    0,                                                              /* tp_call */
-    0,                                                              /* tp_str */
-    PyObject_GenericGetAttr,                                        /* tp_getattro */
-    PyObject_GenericSetAttr,                                        /* tp_setattro */
-    0,                                                              /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,                       /*tp_flags*/
+    0,                                                                    /* tp_print */
+    0,                                                                    /* tp_getattr */
+    0,                                                                    /* tp_setattr */
+    0,                                                                    /* tp_reserved */
+    0,                                                                    /* tp_repr */
+    0,                                                                    /* tp_as_number */
+    0,                                                                    /* tp_as_sequence */
+    0,                                                                    /* tp_as_mapping */
+    0,                                                                    /* tp_hash  */
+    0,                                                                    /* tp_call */
+    0,                                                                    /* tp_str */
+    PyObject_GenericGetAttr,                                              /* tp_getattro */
+    PyObject_GenericSetAttr,                                              /* tp_setattro */
+    0,                                                                    /* tp_as_buffer */
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,                             /*tp_flags*/
     "DynamsoftDocumentScanner",                                           /* tp_doc */
-    0,                                                              /* tp_traverse */
-    0,                                                              /* tp_clear */
-    0,                                                              /* tp_richcompare */
-    0,                                                              /* tp_weaklistoffset */
-    0,                                                              /* tp_iter */
-    0,                                                              /* tp_iternext */
-    instance_methods,                                               /* tp_methods */
-    0,                                                              /* tp_members */
-    0,                                                              /* tp_getset */
-    0,                                                              /* tp_base */
-    0,                                                              /* tp_dict */
-    0,                                                              /* tp_descr_get */
-    0,                                                              /* tp_descr_set */
-    0,                                                              /* tp_dictoffset */
-    0,                                                              /* tp_init */
-    0,                                                              /* tp_alloc */
+    0,                                                                    /* tp_traverse */
+    0,                                                                    /* tp_clear */
+    0,                                                                    /* tp_richcompare */
+    0,                                                                    /* tp_weaklistoffset */
+    0,                                                                    /* tp_iter */
+    0,                                                                    /* tp_iternext */
+    instance_methods,                                                     /* tp_methods */
+    0,                                                                    /* tp_members */
+    0,                                                                    /* tp_getset */
+    0,                                                                    /* tp_base */
+    0,                                                                    /* tp_dict */
+    0,                                                                    /* tp_descr_get */
+    0,                                                                    /* tp_descr_set */
+    0,                                                                    /* tp_dictoffset */
+    0,                                                                    /* tp_init */
+    0,                                                                    /* tp_alloc */
     DynamsoftDocumentScanner_new,                                         /* tp_new */
 };
 

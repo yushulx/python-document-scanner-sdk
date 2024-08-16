@@ -53,7 +53,7 @@ $ scandocument -c 1 -l <license-key>
             
             normalized_image = scanner.normalizeBuffer(image, x1, y1, x2, y2, x3, y3, x4, y4)
             showNormalizedImage("Normalized Image", normalized_image)
-            cv2.drawContours(image, [np.int0([(x1, y1), (x2, y2), (x3, y3), (x4, y4)])], 0, (0, 255, 0), 2)
+            cv2.drawContours(image, [np.intp([(x1, y1), (x2, y2), (x3, y3), (x4, y4)])], 0, (0, 255, 0), 2)
         
         cv2.imshow('Document Image', image)
         cv2.waitKey(0)
@@ -172,7 +172,7 @@ $ scandocument -c 1 -l <license-key>
                     x4 = result.x4
                     y4 = result.y4
                     
-                    cv2.drawContours(image, [np.int0([(x1, y1), (x2, y2), (x3, y3), (x4, y4)])], 0, (0, 255, 0), 2)
+                    cv2.drawContours(image, [np.intp([(x1, y1), (x2, y2), (x3, y3), (x4, y4)])], 0, (0, 255, 0), 2)
                 
             cv2.putText(image, 'Press "n" to normalize image', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
             cv2.putText(image, 'Press "s" to save image', (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
