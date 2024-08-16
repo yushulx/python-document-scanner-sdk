@@ -5,27 +5,33 @@
 #include <structmember.h>
 
 // https://docs.python.org/3/c-api/typeobj.html#typedef-examples
-typedef struct 
+typedef struct
 {
-	PyObject_HEAD
-    PyObject *bytearray;
-	PyObject *length;
-	PyObject *width;
-	PyObject *height;
-	PyObject *stride;
-	PyObject *format;
-    NormalizedImageResult* normalizedResult;
+    PyObject_HEAD PyObject *bytearray;
+    PyObject *length;
+    PyObject *width;
+    PyObject *height;
+    PyObject *stride;
+    PyObject *format;
+    NormalizedImageResult *normalizedResult;
 } NormalizedImage;
 
 static void NormalizedImage_dealloc(NormalizedImage *self)
 {
-	if (self->bytearray) Py_DECREF(self->bytearray);
-    if (self->length) Py_DECREF(self->length);
-    if (self->width) Py_DECREF(self->width);
-    if (self->height) Py_DECREF(self->height);
-    if (self->stride) Py_DECREF(self->stride);
-    if (self->format) Py_DECREF(self->format);
-    if (self->normalizedResult) DDN_FreeNormalizedImageResult(&self->normalizedResult);
+    if (self->bytearray)
+        Py_DECREF(self->bytearray);
+    if (self->length)
+        Py_DECREF(self->length);
+    if (self->width)
+        Py_DECREF(self->width);
+    if (self->height)
+        Py_DECREF(self->height);
+    if (self->stride)
+        Py_DECREF(self->stride);
+    if (self->format)
+        Py_DECREF(self->format);
+    if (self->normalizedResult)
+        DDN_FreeNormalizedImageResult(&self->normalizedResult);
     Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
@@ -50,7 +56,7 @@ static PyObject *save(PyObject *obj, PyObject *args)
 
     if (self->normalizedResult)
     {
-        DDN_SaveImageDataToFile(self->normalizedResult->image, pFileName);
+        NormalizedImageResult_SaveToFile(self->normalizedResult, pFileName);
         printf("Save image to file: %s\n", pFileName);
         return Py_BuildValue("i", 0);
     }
@@ -78,20 +84,19 @@ static PyMemberDef NormalizedImage_members[] = {
     {"height", T_OBJECT_EX, offsetof(NormalizedImage, height), 0, "height"},
     {"stride", T_OBJECT_EX, offsetof(NormalizedImage, stride), 0, "stride"},
     {"format", T_OBJECT_EX, offsetof(NormalizedImage, format), 0, "format"},
-    {NULL}  /* Sentinel */
+    {NULL} /* Sentinel */
 };
 
 static PyMethodDef ni_instance_methods[] = {
     {"save", save, METH_VARARGS, NULL},
     {"recycle", recycle, METH_VARARGS, NULL},
-    {NULL, NULL, 0, NULL}
-};
+    {NULL, NULL, 0, NULL}};
 
 static PyTypeObject NormalizedImageType = {
     PyVarObject_HEAD_INIT(NULL, 0) "docscanner.NormalizedImage", /* tp_name */
-    sizeof(NormalizedImage),                                       /* tp_basicsize */
+    sizeof(NormalizedImage),                                     /* tp_basicsize */
     0,                                                           /* tp_itemsize */
-    (destructor)NormalizedImage_dealloc,                           /* tp_dealloc */
+    (destructor)NormalizedImage_dealloc,                         /* tp_dealloc */
     0,                                                           /* tp_print */
     0,                                                           /* tp_getattr */
     0,                                                           /* tp_setattr */
@@ -107,15 +112,15 @@ static PyTypeObject NormalizedImageType = {
     PyObject_GenericSetAttr,                                     /* tp_setattro */
     0,                                                           /* tp_as_buffer */
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,                    /*tp_flags*/
-    "NormalizedImage",                                             /* tp_doc */
+    "NormalizedImage",                                           /* tp_doc */
     0,                                                           /* tp_traverse */
     0,                                                           /* tp_clear */
     0,                                                           /* tp_richcompare */
     0,                                                           /* tp_weaklistoffset */
     0,                                                           /* tp_iter */
     0,                                                           /* tp_iternext */
-    ni_instance_methods,                                                           /* tp_methods */
-    NormalizedImage_members,                                       /* tp_members */
+    ni_instance_methods,                                         /* tp_methods */
+    NormalizedImage_members,                                     /* tp_members */
     0,                                                           /* tp_getset */
     0,                                                           /* tp_base */
     0,                                                           /* tp_dict */
@@ -124,7 +129,7 @@ static PyTypeObject NormalizedImageType = {
     0,                                                           /* tp_dictoffset */
     0,                                                           /* tp_init */
     0,                                                           /* tp_alloc */
-    NormalizedImage_new,                                           /* tp_new */
+    NormalizedImage_new,                                         /* tp_new */
 };
 
 #endif

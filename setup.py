@@ -51,6 +51,7 @@ def copyfiles(src, dst):
     else:
         shutil.copy2(src, dst)
 
+
 class CustomBuildExt(build_ext.build_ext):
     def run(self):
         build_ext.build_ext.run(self)
@@ -111,6 +112,8 @@ setup(name='document-scanner-sdk',
           "Programming Language :: Python :: 3.8",
           "Programming Language :: Python :: 3.9",
           "Programming Language :: Python :: 3.10",
+		  "Programming Language :: Python :: 3.11",
+		  "Programming Language :: Python :: 3.12",
           "Programming Language :: C++",
           "Programming Language :: Python :: Implementation :: CPython",
           "Topic :: Scientific/Engineering",

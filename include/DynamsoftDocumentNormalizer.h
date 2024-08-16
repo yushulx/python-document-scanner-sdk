@@ -16,7 +16,7 @@
 #else
 #include "DynamsoftCore.h"
 #endif
-#define DDN_VERSION                  "1.0.0.0124"
+#define DDN_VERSION                  "1.0.30.0602"
 
 #pragma pack(push)
 #pragma pack(1)
@@ -74,7 +74,7 @@ extern "C" {
 
 	DDN_API void DDN_FreeDetectedQuadResultArray(DetectedQuadResultArray** results);
 
-	DDN_API int DDN_SaveImageDataToFile(const ImageData* imageData, const char * filePath);
+	DDN_API int NormalizedImageResult_SaveToFile(const NormalizedImageResult* normalizedImageResult, const char* filePath);
 
 #ifdef __cplusplus
 }
@@ -138,7 +138,7 @@ namespace dynamsoft
 		public:
 			CNormalizedImageResult(core::CImageData* img);
 			~CNormalizedImageResult();
-
+			int SaveToFile(const char* filePath);
 			const core::CImageData* GetImageData();
 
 		private:
@@ -181,7 +181,6 @@ namespace dynamsoft
 
 			static void FreeString(char** content);
 
-			static int SaveImageDataToFile(const core::CImageData* imageData, const char * filePath);
 
 		private:
 			CDocumentNormalizer(const CDocumentNormalizer& r);

@@ -1,7 +1,7 @@
 #ifndef __DYNAMSOFT_CORE_H__
 #define __DYNAMSOFT_CORE_H__
 
-#define DYNAMSOFT_CORE_VERSION "2.0.0.0508"
+#define DYNAMSOFT_CORE_VERSION "2.0.1.0929"
 
 /**Successful. */
 #define DM_OK								0 
@@ -81,16 +81,19 @@
 #define DMERR_GET_MODE_ARGUMENT_ERROR  -10055
 
 /**No content has been detected.*/
-#define DDN_CONTENT_NOT_FOUND -10056
+#define DDNERR_CONTENT_NOT_FOUND -50001
 
 /*The quardrilateral is invalid*/
-#define DDN_QUADRILATERAL_INVALID -10057
+#define DMERR_QUADRILATERAL_INVALID -10057
 
 /**Failed to save file.*/
 #define DMERR_FILE_SAVE_FAILED -10058
 
 /**The stage type is invalid.*/
 #define DMERR_STAGE_TYPE_INVALID -10059
+
+/**The image orientation is invalid.*/
+#define DMERR_IMAGE_ORIENTATION_INVALID -10060
 
 #ifndef _COMMON_PART1_
 #define _COMMON_PART1_
@@ -390,13 +393,13 @@ typedef enum BarcodeFormat
 {
 	/**All supported formats in BarcodeFormat group 1*/
 #if defined(_WIN32) || defined(_WIN64)
-	BF_ALL = 0xFE1FFFFF,
+	BF_ALL = 0xFE3FFFFF,
 #else
-	BF_ALL = -31457281,
+	BF_ALL = -29360129,
 #endif
 
-	/**Combined value of BF_CODABAR, BF_CODE_128, BF_CODE_39, BF_CODE_39_Extended, BF_CODE_93, BF_EAN_13, BF_EAN_8, INDUSTRIAL_25, BF_ITF, BF_UPC_A, BF_UPC_E, BF_MSI_CODE;  */
-	BF_ONED = 0x001007FF,
+	/**Combined value of BF_CODABAR, BF_CODE_128, BF_CODE_39, BF_CODE_39_Extended, BF_CODE_93, BF_EAN_13, BF_EAN_8, INDUSTRIAL_25, BF_ITF, BF_UPC_A, BF_UPC_E, BF_MSI_CODE ,BF_ONED;  */
+	BF_ONED = 0x003007FF,
 
 	/**Combined value of BF_GS1_DATABAR_OMNIDIRECTIONAL, BF_GS1_DATABAR_TRUNCATED, BF_GS1_DATABAR_STACKED, BF_GS1_DATABAR_STACKED_OMNIDIRECTIONAL, BF_GS1_DATABAR_EXPANDED, BF_GS1_DATABAR_EXPANDED_STACKED, BF_GS1_DATABAR_LIMITED*/
 	BF_GS1_DATABAR = 0x0003F800,
@@ -489,6 +492,10 @@ typedef enum BarcodeFormat
 	/**MSI Code*/
 	BF_MSI_CODE = 0x100000,
 
+	/*Code 11*/
+	BF_CODE_11 = 0x200000,
+
+
 	/**No barcode format in BarcodeFormat group 1*/
 	BF_NULL = 0x00
 
@@ -506,35 +513,38 @@ typedef enum BarcodeFormat_2
 	/**No barcode format in BarcodeFormat group 2*/
 	BF2_NULL = 0x00,
 
-	/**Combined value of BF2_USPSINTELLIGENTMAIL, BF2_POSTNET, BF2_PLANET, BF2_AUSTRALIANPOST, BF2_RM4SCC.
-	When you set this barcode format, the library will automatically add LM_STATISTICS_POSTAL_CODE to LocalizationModes if you doesn't set it.*/
+	/**Combined value of BF2_USPSINTELLIGENTMAIL, BF2_POSTNET, BF2_PLANET, BF2_AUSTRALIANPOST, BF2_RM4SCC.*/
 	BF2_POSTALCODE = 0x01F00000,
 
 	/**Nonstandard barcode */
 	BF2_NONSTANDARD_BARCODE = 0x01,
 
-	/**USPS Intelligent Mail.
-	When you set this barcode format, the library will automatically add LM_STATISTICS_POSTAL_CODE to LocalizationModes if you doesn't set it.*/
+	/**USPS Intelligent Mail.*/
 	BF2_USPSINTELLIGENTMAIL = 0x00100000,
 
-	/**Postnet.
-	When you set this barcode format, the library will automatically add LM_STATISTICS_POSTAL_CODE to LocalizationModes if you doesn't set it.*/
+	/**Postnet.*/
 	BF2_POSTNET = 0x00200000,
 
-	/**Planet.
-	When you set this barcode format, the library will automatically add LM_STATISTICS_POSTAL_CODE to LocalizationModes if you doesn't set it.*/
+	/**Planet.*/
 	BF2_PLANET = 0x00400000,
 
-	/**Australian Post.
-	When you set this barcode format, the library will automatically add LM_STATISTICS_POSTAL_CODE to LocalizationModes if you doesn't set it.*/
+	/**Australian Post.*/
 	BF2_AUSTRALIANPOST = 0x00800000,
 
-	/**Royal Mail 4-State Customer Barcode.
-	When you set this barcode format, the library will automatically add LM_STATISTICS_POSTAL_CODE to LocalizationModes if you doesn't set it.*/
+	/**Royal Mail 4-State Customer Barcode.*/
 	BF2_RM4SCC = 0x01000000,
 
-	/**DotCode. When you set this barcode format, the library will automatically add LM_STATISTICS_MARKS to LocalizationModes if you doesn't set it.*/
-	BF2_DOTCODE = 0x02
+	/**DotCode.*/
+	BF2_DOTCODE = 0x02,
+
+	/**_PHARMACODE_ONE_TRACK.*/
+	BF2_PHARMACODE_ONE_TRACK = 0x04,
+
+	/**PHARMACODE_TWO_TRACK.*/
+	BF2_PHARMACODE_TWO_TRACK = 0x08,
+
+	/**PHARMACODE.*/
+	BF2_PHARMACODE = 0x0C
 }BarcodeFormat_2;
 
 
@@ -579,6 +589,9 @@ typedef struct tagImageData
 
 	/**The image pixel format used in the image byte array.*/
 	ImagePixelFormat format;
+
+	/**The image orientation.*/
+	int orientation;
 }ImageData;
 
 
@@ -708,10 +721,10 @@ namespace dynamsoft
 			int height;
 			int stride;
 			ImagePixelFormat format;
-
+			int orientation;
 		public:
 			CImageData();
-			CImageData(int _l, unsigned char* _b, int _w, int _h, int _s, ImagePixelFormat _f);
+			CImageData(int _l, unsigned char* _b, int _w, int _h, int _s, ImagePixelFormat _f, int _o = 0);
 			~CImageData();
 
 			const unsigned char* const GetBytes() const;
@@ -720,10 +733,11 @@ namespace dynamsoft
 			int GetHeight() const;
 			int GetStride() const;
 			ImagePixelFormat GetImagePixelFormat() const;
+			int GetOrientation() const;
 
 		private:
-			CImageData(const CImageData&);
-			CImageData& operator=(const CImageData&);
+			CImageData(const CImageData&) = delete;
+			CImageData& operator=(const CImageData&) = delete;
 		};
 
 #pragma pack(pop)
