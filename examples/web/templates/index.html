@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Document Scanner</title>
+</head>
+<body>
+  <h1>Document Edge Detection and Perspective Transformation</h1>
+  <div id="controller">
+    <button id="capture">Capture</button>
+    <script type="text/javascript" src="{{ url_for('static', filename='controller.js') }}"></script>      
+  </div>
+  <img id="video" src="{{ url_for('video_viewer') }}" width="640" height="480">
+  <img id="image" style="max-width:640px; max-height:480px">
+</body>
+</html>
