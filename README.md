@@ -2,7 +2,7 @@
 This project provides Python bindings for the [Dynamsoft C/C++ Document Scanner SDK v1.x](https://www.dynamsoft.com/document-normalizer/docs/core/introduction/?ver=latest&ver=latest), enabling developers to quickly create document scanner applications for Windows and Linux desktop environments.
 
 ## About Dynamsoft Document Scanner
-- Activate the SDK with a [30-day FREE trial license](https://www.dynamsoft.com/customer/license/trialLicense?product=ddn).
+- Activate the SDK with a [30-day FREE trial license](https://www.dynamsoft.com/customer/license/trialLicense/?product=dcv&package=cross-platform).
 
 
 ## Supported Python Versions
