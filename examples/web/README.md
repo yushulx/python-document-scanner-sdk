@@ -28,4 +28,6 @@ pip install -r requirements.txt
 
     ![Python Flask web document scanner](https://www.dynamsoft.com/codepool/img/2024/08/python-flask-web-document-scanner.png)
 
+## Blog
+[Building a Python Flask Web Document Scanner Using Dynamsoft Document SDK](https://www.dynamsoft.com/codepool/python-flask-web-document-scanner.html)
 
