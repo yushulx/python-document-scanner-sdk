@@ -89,7 +89,8 @@ if __name__ == '__main__':
                         mat = convertNormalizedImage2Mat(image)
                         # Use Tesseract to determine the character orientation in the warped image
                         osd_data = pytesseract.image_to_osd(
-                            mat, output_type=Output.DICT)
+                            mat, lang='eng', output_type=Output.DICT)
+                        print(osd_data)
                         rotation_angle = osd_data['rotate']
 
                         print(
@@ -117,6 +118,19 @@ if __name__ == '__main__':
                         cv2.imshow(
                             "Original Image with Detected Border and Rotation Angle", cv_image)
                         cv2.imshow("Normalized Image", mat)
+
+                        # Rotate the image to the correct orientation
+                        if rotation_angle == 90:
+                            mat = cv2.rotate(
+                                mat, cv2.ROTATE_90_CLOCKWISE)
+                        elif rotation_angle == 180:
+                            mat = cv2.rotate(mat, cv2.ROTATE_180)
+                        elif rotation_angle == 270:
+                            mat = cv2.rotate(
+                                mat, cv2.ROTATE_90_COUNTERCLOCKWISE)
+
+                        cv2.imshow("Rotated Image", mat)
+
                         cv2.waitKey(0)
 
                         errorCode, errorMsg = image_manager.save_to_file(
