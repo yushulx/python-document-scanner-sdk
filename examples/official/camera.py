@@ -2,20 +2,7 @@ from dynamsoft_capture_vision_bundle import *
 import cv2
 import numpy as np
 import queue
-
-
-def convertMat2ImageData(mat):
-    if len(mat.shape) == 3:
-        height, width, channels = mat.shape
-        pixel_format = EnumImagePixelFormat.IPF_RGB_888
-    else:
-        height, width = mat.shape
-        channels = 1
-        pixel_format = EnumImagePixelFormat.IPF_GRAYSCALED
-
-    stride = width * channels
-    imagedata = ImageData(mat.tobytes(), width, height, stride, pixel_format)
-    return imagedata
+from utils import *
 
 
 class FrameFetcher(ImageSourceAdapter):
