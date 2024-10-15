@@ -23,3 +23,7 @@ https://github.com/user-attachments/assets/1d93597e-45f0-487f-a946-8f6dbcda9b07
 - macOS
     
   
+## Examples
+- [camera.py](./camera.py): Detect documents from a camera video stream.
+- [file.py](./file.py): Detect documents from an image file and display the results in a window.
+- [orientation_detection.py](./orientation_detection.py): Normalize a document using Dynamsoft Capture Vision SDK, and detect the orientation of the document using Tesseract OCR.
