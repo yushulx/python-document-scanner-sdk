@@ -108,6 +108,8 @@ if __name__ == '__main__':
                         x4 = location.points[3].x
                         y4 = location.points[3].y
 
+                        del location
+
                         cv2.drawContours(
                             cv_image, [np.intp([(x1, y1), (x2, y2), (x3, y3), (x4, y4)])], 0, (0, 255, 0), 2)
                         cv2.putText(cv_image, f"Rotation: {rotation_angle} degrees", (10, 50),
