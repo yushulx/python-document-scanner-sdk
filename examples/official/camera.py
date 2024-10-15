@@ -75,8 +75,10 @@ if __name__ == '__main__':
                 captured_result = result_queue.get_nowait()
                 items = captured_result.get_items()
                 for item in items:
-                    location = item.get_location()
+
                     if item.get_type() == EnumCapturedResultItemType.CRIT_BARCODE:
+                        text = item.get_text()
+                        location = item.get_location()
                         x1 = location.points[0].x
                         y1 = location.points[0].y
                         x2 = location.points[1].x
@@ -87,7 +89,14 @@ if __name__ == '__main__':
                         y4 = location.points[3].y
                         cv2.drawContours(
                             frame, [np.intp([(x1, y1), (x2, y2), (x3, y3), (x4, y4)])], 0, (0, 255, 0), 2)
+
+                        cv2.putText(frame, text, (x1, y1),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+
+                        del location
+
                     elif item.get_type() == EnumCapturedResultItemType.CRIT_NORMALIZED_IMAGE:
+                        location = item.get_location()
                         x1 = location.points[0].x
                         y1 = location.points[0].y
                         x2 = location.points[1].x
@@ -99,7 +108,10 @@ if __name__ == '__main__':
                         cv2.drawContours(
                             frame, [np.intp([(x1, y1), (x2, y2), (x3, y3), (x4, y4)])], 0, (255, 0, 0), 2)
 
-                    del location
+                        cv2.putText(frame, "Edge Detection", (x1, y1),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+
+                        del location
 
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
