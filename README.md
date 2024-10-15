@@ -1,9 +1,21 @@
 # Python Document Scanner SDK 
 This project provides Python bindings for the [Dynamsoft C/C++ Document Scanner SDK v1.x](https://www.dynamsoft.com/document-normalizer/docs/core/introduction/?ver=latest&ver=latest), enabling developers to quickly create document scanner applications for Windows and Linux desktop environments.
 
-## About Dynamsoft Document Scanner
-- Activate the SDK with a [30-day FREE trial license](https://www.dynamsoft.com/customer/license/trialLicense/?product=dcv&package=cross-platform).
+> Note: This project is an unofficial, community-maintained Python wrapper for the Dynamsoft Document Normalizer SDK. For those seeking the most reliable and fully-supported solution, Dynamsoft offers an official Python package. Visit the [Dynamsoft Capture Vision Bundle](https://pypi.org/project/dynamsoft-capture-vision-bundle/) page on PyPI for more details.
 
+## About Dynamsoft Capture Vision Bundle
+- Activate the SDK with a [30-day FREE trial license](https://www.dynamsoft.com/customer/license/trialLicense/?product=dcv&package=cross-platform).
+- Install the SDK via `pip install dynamsoft-capture-vision-bundle`.
+
+### Comparison Table
+| Feature | Unofficial Wrapper (Community) | Official Dynamsoft Capture Vision SDK |
+| --- | --- | --- |
+| Support | Community-driven, best effort | Official support from Dynamsoft |
+| Documentation | README only | [Comprehensive Online Documentation](https://www.dynamsoft.com/capture-vision/docs/server/programming/python/?lang=python) |
+| API Coverage | Limited | Full API coverage |
+|Feature Updates| May lag behind the official SDK | First to receive new features |
+| Compatibility | Limited testing across environments| Thoroughly tested across all supported environments|
+| OS Support | Windows, Linux | Windows, Linux, **macOS** |
 
 ## Supported Python Versions
 * Python 3.x
