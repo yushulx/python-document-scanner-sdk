@@ -1,6 +1,8 @@
 # Dynamsoft Capture Vision SDK for Document Detection
 This repository contains example code for using the Dynamsoft Capture Vision SDK to detect documents in images.
 
+https://github.com/user-attachments/assets/1d93597e-45f0-487f-a946-8f6dbcda9b07
+
 ## Prerequisites
 - [Dynamsoft Capture Vision Trial License](https://www.dynamsoft.com/customer/license/trialLicense/?product=dcv&package=cross-platform)
     
@@ -15,6 +17,9 @@ This repository contains example code for using the Dynamsoft Capture Vision SDK
     pip install -r requirements.txt
     ```
 
-
+## Supported Platforms
+- Windows
+- Linux
+- macOS
     
   
