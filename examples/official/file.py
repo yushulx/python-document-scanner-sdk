@@ -69,6 +69,7 @@ if __name__ == '__main__':
                             "Original Image with Detected Border", cv_image)
                         cv2.imshow("Normalized Image", mat)
                         cv2.waitKey(0)
+                        cv2.destroyAllWindows()
 
                         errorCode, errorMsg = image_manager.save_to_file(
                             image, out_path)
