@@ -3,48 +3,7 @@ import os
 import sys
 import cv2
 import numpy as np
-
-
-def convertNormalizedImage2Mat(normalized_image):
-    ba = bytearray(normalized_image.get_bytes())
-    width = normalized_image.get_width()
-    height = normalized_image.get_height()
-
-    channels = 3
-    if normalized_image.get_image_pixel_format() == EnumImagePixelFormat.IPF_BINARY:
-        channels = 1
-        all = []
-        skip = normalized_image.stride * 8 - width
-
-        index = 0
-        n = 1
-        for byte in ba:
-
-            byteCount = 7
-            while byteCount >= 0:
-                b = (byte & (1 << byteCount)) >> byteCount
-
-                if index < normalized_image.stride * 8 * n - skip:
-                    if b == 1:
-                        all.append(255)
-                    else:
-                        all.append(0)
-
-                byteCount -= 1
-                index += 1
-
-            if index == normalized_image.stride * 8 * n:
-                n += 1
-
-        mat = np.array(all, dtype=np.uint8).reshape(height, width, channels)
-        return mat
-
-    elif normalized_image.get_image_pixel_format() == EnumImagePixelFormat.IPF_GRAYSCALED:
-        channels = 1
-
-    mat = np.array(ba, dtype=np.uint8).reshape(height, width, channels)
-
-    return mat
+from utils import *
 
 
 if __name__ == '__main__':
@@ -63,6 +22,9 @@ if __name__ == '__main__':
 
             if image_path.lower() == "q":
                 sys.exit(0)
+
+            if image_path == "":
+                image_path = "../../images/1.png"
 
             if not os.path.exists(image_path):
                 print("The image path does not exist.")
@@ -84,7 +46,7 @@ if __name__ == '__main__':
                     image = item.get_image_data()
                     if image != None:
 
-                        mat = convertNormalizedImage2Mat(image)
+                        mat = convertImageData2Mat(image)
 
                         # Draw the detected rotation angle on the original image
                         cv_image = cv2.imread(image_path)
