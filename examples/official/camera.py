@@ -82,8 +82,8 @@ if __name__ == '__main__':
 
                         del location
 
-                    elif item.get_type() == EnumCapturedResultItemType.CRIT_NORMALIZED_IMAGE:
-                        location = item.get_location()
+                    elif item.get_type() == EnumCapturedResultItemType.CRIT_DESKEWED_IMAGE:
+                        location = item.get_source_deskew_quad()
                         x1 = location.points[0].x
                         y1 = location.points[0].y
                         x2 = location.points[1].x

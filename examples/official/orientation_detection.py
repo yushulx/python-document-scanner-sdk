@@ -32,15 +32,15 @@ if __name__ == '__main__':
             if result.get_error_code() != EnumErrorCode.EC_OK:
                 print("Error:", result.get_error_code(),
                       result.get_error_string())
-            normalized_images_result = result.get_normalized_images_result()
-            if normalized_images_result is None or len(normalized_images_result.get_items()) == 0:
+            processed_document_result = result.get_processed_document_result()
+            if processed_document_result is None or len(processed_document_result.get_deskewed_image_result_items()) == 0:
                 print("No normalized documents.")
             else:
-                items = normalized_images_result.get_items()
+                items = processed_document_result.get_deskewed_image_result_items()
                 print("Normalized", len(items), "documents.")
-                for index, item in enumerate(normalized_images_result.get_items()):
+                for index, item in enumerate(processed_document_result.get_deskewed_image_result_items()):
                     out_path = "normalizedResult_" + str(index) + ".png"
-                    image_manager = ImageManager()
+                    image_io = ImageIO()
                     image = item.get_image_data()
                     if image != None:
 
@@ -57,7 +57,7 @@ if __name__ == '__main__':
                         # Draw the detected rotation angle on the original image
                         cv_image = cv2.imread(image_path)
 
-                        location = item.get_location()
+                        location = item.get_source_deskew_quad()
                         x1 = location.points[0].x
                         y1 = location.points[0].y
                         x2 = location.points[1].x
@@ -92,7 +92,7 @@ if __name__ == '__main__':
                         cv2.waitKey(0)
                         cv2.destroyAllWindows()
 
-                        errorCode, errorMsg = image_manager.save_to_file(
+                        errorCode, errorMsg = image_io.save_to_file(
                             image, out_path)
                         if errorCode == 0:
                             print("Document " + str(index) +
