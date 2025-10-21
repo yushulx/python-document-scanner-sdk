@@ -18,8 +18,8 @@ class MyCapturedResultReceiver(CapturedResultReceiver):
         super().__init__()
         self.result_queue = result_queue
 
-    def on_captured_result_received(self, captured_result):
-        self.result_queue.put(captured_result)
+    def on_captured_result_received(self, result):
+        self.result_queue.put(result)
 
 
 if __name__ == '__main__':
@@ -75,12 +75,11 @@ if __name__ == '__main__':
                         x4 = location.points[3].x
                         y4 = location.points[3].y
                         cv2.drawContours(
-                            frame, [np.intp([(x1, y1), (x2, y2), (x3, y3), (x4, y4)])], 0, (0, 255, 0), 2)
+                            frame, [np.array([(x1, y1), (x2, y2), (x3, y3), (x4, y4)], np.int32)], 0, (0, 255, 0), 2)
 
                         cv2.putText(frame, text, (x1, y1),
                                     cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
-                        del location
 
                     elif item.get_type() == EnumCapturedResultItemType.CRIT_DESKEWED_IMAGE:
                         location = item.get_source_deskew_quad()
@@ -93,12 +92,11 @@ if __name__ == '__main__':
                         x4 = location.points[3].x
                         y4 = location.points[3].y
                         cv2.drawContours(
-                            frame, [np.intp([(x1, y1), (x2, y2), (x3, y3), (x4, y4)])], 0, (255, 0, 0), 2)
+                            frame, [np.array([(x1, y1), (x2, y2), (x3, y3), (x4, y4)], np.int32)], 0, (255, 0, 0), 2)
 
                         cv2.putText(frame, "Edge Detection", (x1, y1),
                                     cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
 
-                        del location
 
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break

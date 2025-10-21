@@ -11,11 +11,11 @@ while (cap.isOpened()):
     video_frame = None
     image_frame = None
 
-    if cv2.waitKey(10) & 0xFF == ord('q'):
+    if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
     if ret:
-        if cv2.waitKey(10) & 0xFF == ord('p'):
+        if cv2.waitKey(1) & 0xFF == ord('p'):
             video_frame, image_frame = scanner.detect_edge(frame, True)
         else:
             video_frame, _ = scanner.detect_edge(frame)

@@ -1,5 +1,6 @@
 import argparse
 import docscanner
+from docscanner import *
 import sys
 import numpy as np
 import cv2
@@ -16,14 +17,12 @@ def callback(results):
 
 
 def showNormalizedImage(name, normalized_image):
-    mat = docscanner.convertNormalizedImage2Mat(normalized_image)
-    cv2.imshow(name, mat)
-    return mat
+    cv2.imshow(name, normalized_image)
 
 
 def process_file(filename, scanner):
     image = cv2.imread(filename)
-    results = scanner.detectMat(image)
+    results = scanner.detect(image)
     normalized_image = None
     for result in results:
         x1 = result.x1
@@ -35,11 +34,10 @@ def process_file(filename, scanner):
         x4 = result.x4
         y4 = result.y4
 
-        normalized_image = scanner.normalizeBuffer(
-            image, x1, y1, x2, y2, x3, y3, x4, y4)
-        showNormalizedImage("Normalized Image", normalized_image)
+        normalized_image = scanner.normalize(result, EnumImageColourMode.ICM_COLOUR)
+
         cv2.drawContours(
-            image, [np.intp([(x1, y1), (x2, y2), (x3, y3), (x4, y4)])], 0, (0, 255, 0), 2)
+            image, [np.array([(x1, y1), (x2, y2), (x3, y3), (x4, y4)], dtype=np.int32)], 0, (0, 255, 0), 2)
 
     cv2.putText(image, 'Press "ESC" to exit', (10, 30),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
@@ -47,9 +45,8 @@ def process_file(filename, scanner):
     cv2.waitKey(0)
 
     if normalized_image is not None:
-        normalized_image.save(str(time.time()) + '.png')
+        cv2.imwrite(str(time.time()) + '.png', normalized_image)
         print('Image saved')
-        normalized_image.recycle()
     else:
         print('No document found')
 
@@ -79,22 +76,19 @@ def process_video(scanner):
                         x4 = result.x4
                         y4 = result.y4
 
-                        normalized_image = scanner.normalizeBuffer(
-                            image, x1, y1, x2, y2, x3, y3, x4, y4)
-                        g_normalized_images.append(
-                            (str(index), normalized_image))
-                        showNormalizedImage(str(index), normalized_image)
-                        index += 1
+                        if result.normalized_image is not None:
+                            g_normalized_images.append(
+                                (str(index), result.normalized_image))
+                            showNormalizedImage(str(index), result.normalized_image)
+                            index += 1
                 else:
                     print('No document found')
         elif ch == ord('s'):  # save image
             if len(g_normalized_images) > 0:
                 for data in g_normalized_images:
-                    # cv2.imwrite('images/' + str(time.time()) + '.png', image)
+                    cv2.imwrite(str(time.time()) + '.png', data[1])
                     cv2.destroyWindow(data[0])
-                    data[1].save(str(time.time()) + '.png')
-                    print('Image saved')
-                    data[1].recycle()
+                print('Images saved')
 
                 g_normalized_images = []
                 index = 0
@@ -115,8 +109,8 @@ def process_video(scanner):
                 x4 = result.x4
                 y4 = result.y4
 
-                cv2.drawContours(
-                    image, [np.intp([(x1, y1), (x2, y2), (x3, y3), (x4, y4)])], 0, (0, 255, 0), 2)
+                contour = np.array([(x1, y1), (x2, y2), (x3, y3), (x4, y4)], dtype=np.int32)
+                cv2.drawContours(image, [contour], 0, (0, 255, 0), 2)
 
         cv2.putText(image, '1. Press "n" to normalize image',
                     (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
@@ -126,10 +120,7 @@ def process_video(scanner):
                     cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
         cv2.imshow('Document Scanner', image)
 
-    for data in g_normalized_images:
-        data[1].recycle()
-
-
+    scanner.clearAsyncListener()
 def scandocument():
     """
     Command-line script for scanning documents from a given image or camera video stream.
@@ -161,7 +152,6 @@ def scandocument():
 
         # initialize mrz scanner
         scanner = docscanner.createInstance()
-        ret = scanner.setParameters(docscanner.Templates.color)
 
         if filename is not None:
             process_file(filename, scanner)

@@ -23,6 +23,8 @@ def capture_status():
     if status == "true":
         video_camera.capture_frame()
         return jsonify(result="done")
+    else:
+        return jsonify(result="no action")
 
 def video_frame():
     global video_camera 
@@ -37,8 +39,10 @@ def video_frame():
             yield (b'--frame\r\n'
                     b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n\r\n')
         else:
-            yield (b'--frame\r\n'
-                    b'Content-Type: image/jpeg\r\n\r\n' + video_camera.get_cached_frame() + b'\r\n\r\n')
+            cached_frame = video_camera.get_cached_frame()
+            if cached_frame is not None:
+                yield (b'--frame\r\n'
+                        b'Content-Type: image/jpeg\r\n\r\n' + cached_frame + b'\r\n\r\n')
 
 def image_frame():
     global video_camera 

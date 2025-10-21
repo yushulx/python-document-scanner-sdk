@@ -1,20 +1,21 @@
 import argparse
-import docscanner
+import os
 import sys
+package_path = os.path.dirname(__file__) + '/../../'
+print(package_path)
+sys.path.append(package_path)
+import docscanner
+from docscanner import *
 import numpy as np
 import cv2
 import time
-
-
+print(docscanner.__version__)
 def showNormalizedImage(name, normalized_image):
-    mat = docscanner.convertNormalizedImage2Mat(normalized_image)
-    cv2.imshow(name, mat)
-    return mat
-
+    cv2.imshow(name, normalized_image)
 
 def process_file(filename, scanner):
     image = cv2.imread(filename)
-    results = scanner.detectMat(image)
+    results = scanner.detect(image)
     normalized_image = None
     for result in results:
         x1 = result.x1
@@ -26,11 +27,12 @@ def process_file(filename, scanner):
         x4 = result.x4
         y4 = result.y4
 
-        normalized_image = scanner.normalizeBuffer(
-            image, x1, y1, x2, y2, x3, y3, x4, y4)
-        showNormalizedImage("Normalized Image", normalized_image)
+        normalized_image = scanner.normalize(result, EnumImageColourMode.ICM_COLOUR)
+
+        if result.normalized_image is not None:
+            showNormalizedImage("Normalized Image", result.normalized_image)
         cv2.drawContours(
-            image, [np.intp([(x1, y1), (x2, y2), (x3, y3), (x4, y4)])], 0, (0, 255, 0), 2)
+            image, [np.array([(x1, y1), (x2, y2), (x3, y3), (x4, y4)], dtype=np.int32)], 0, (0, 255, 0), 2)
 
     cv2.putText(image, 'Press "ESC" to exit', (10, 30),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
@@ -38,9 +40,8 @@ def process_file(filename, scanner):
     cv2.waitKey(0)
 
     if normalized_image is not None:
-        normalized_image.save(str(time.time()) + '.png')
+        cv2.imwrite(str(time.time()) + '.png', normalized_image)
         print('Image saved')
-        normalized_image.recycle()
     else:
         print('No document found')
 
@@ -73,7 +74,6 @@ def scandocument():
 
         # initialize mrz scanner
         scanner = docscanner.createInstance()
-        ret = scanner.setParameters(docscanner.Templates.color)
 
         if filename is not None:
             process_file(filename, scanner)

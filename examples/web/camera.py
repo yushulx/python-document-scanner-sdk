@@ -32,8 +32,9 @@ class VideoCamera(object):
         ret, frame = self.cap.read()
         if ret:
             _, frame = self.scanner.detect_edge(frame, True)
-            ret, jpeg = cv2.imencode('.jpg', frame)
-            self.transformed_frame = jpeg.tobytes()
+            if frame is not None:
+                ret, jpeg = cv2.imencode('.jpg', frame)
+                self.transformed_frame = jpeg.tobytes()
         else:
             return None
 

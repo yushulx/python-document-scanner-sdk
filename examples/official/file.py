@@ -62,10 +62,9 @@ if __name__ == '__main__':
                         x4 = location.points[3].x
                         y4 = location.points[3].y
 
-                        del location
 
                         cv2.drawContours(
-                            cv_image, [np.intp([(x1, y1), (x2, y2), (x3, y3), (x4, y4)])], 0, (0, 255, 0), 2)
+                            cv_image, [np.array([(x1, y1), (x2, y2), (x3, y3), (x4, y4)], np.int32)], 0, (0, 255, 0), 2)
                         cv2.imshow(
                             "Original Image with Detected Border", cv_image)
                         cv2.imshow("Normalized Image", mat)
