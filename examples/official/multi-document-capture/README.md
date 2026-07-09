@@ -2,6 +2,8 @@
 
 A PySide6 desktop document scanner app built with the Dynamsoft Capture Vision SDK. It performs real-time document boundary detection and perspective normalization, with support for both USB camera and image file input.
 
+https://github.com/user-attachments/assets/bdda16cb-335e-47a2-8eb6-8945f4fa5a3f
+
 ## Features
 
 - USB camera live preview with real-time document boundary overlay
