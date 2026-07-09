@@ -58,13 +58,15 @@ def scale_to_fit(image_size: QSize, widget_size: QSize) -> Tuple[float, float, f
     img_aspect = image_size.width() / image_size.height()
     widget_aspect = widget_size.width() / widget_size.height()
     if widget_aspect > img_aspect:
-        scale = widget_size.width() / image_size.width()
-        offset_y = (widget_size.height() - image_size.height() * scale) / 2
-        offset_x = 0.0
-    else:
+        # Widget is relatively wider than the image: fit to full height, letterbox left/right.
         scale = widget_size.height() / image_size.height()
         offset_x = (widget_size.width() - image_size.width() * scale) / 2
         offset_y = 0.0
+    else:
+        # Widget is relatively taller than the image: fit to full width, letterbox top/bottom.
+        scale = widget_size.width() / image_size.width()
+        offset_x = 0.0
+        offset_y = (widget_size.height() - image_size.height() * scale) / 2
     return scale, offset_x, offset_y
 
 

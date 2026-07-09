@@ -14,6 +14,7 @@ from dynamsoft_capture_vision_bundle import (
     EnumImagePixelFormat,
     ImageData,
     ImageIO,
+    ImageProcessor,
     Quadrilateral,
     Point,
 )
@@ -43,6 +44,73 @@ class Page:
     filter_mode: str = "color"
 
 
+def np_to_image_data(image: np.ndarray) -> ImageData:
+    """Convert RGB or grayscale numpy array to DCV ImageData."""
+    if image.ndim == 2:
+        h, w = image.shape
+        stride = image.strides[0]
+        return ImageData(image.tobytes(), w, h, stride, EnumImagePixelFormat.IPF_GRAYSCALED)
+    if image.shape[2] == 3:
+        h, w = image.shape[:2]
+        stride = image.strides[0]
+        return ImageData(image.tobytes(), w, h, stride, EnumImagePixelFormat.IPF_RGB_888)
+    if image.shape[2] == 4:
+        h, w = image.shape[:2]
+        stride = image.strides[0]
+        return ImageData(image.tobytes(), w, h, stride, EnumImagePixelFormat.IPF_ARGB_8888)
+    # Fallback: assume BGR and convert
+    rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    h, w = rgb.shape[:2]
+    stride = rgb.strides[0]
+    return ImageData(rgb.tobytes(), w, h, stride, EnumImagePixelFormat.IPF_RGB_888)
+
+
+def image_data_to_np(image_data: ImageData) -> np.ndarray:
+    """Convert DCV ImageData to RGB numpy array."""
+    fmt = image_data.get_image_pixel_format()
+    w = image_data.get_width()
+    h = image_data.get_height()
+    stride = image_data.get_stride()
+    buf = image_data.get_bytes()
+    if fmt == EnumImagePixelFormat.IPF_GRAYSCALED:
+        arr = np.frombuffer(buf, dtype=np.uint8).reshape((h, stride))
+        gray = arr[:, :w]
+        return cv2.cvtColor(gray, cv2.COLOR_GRAY2RGB)
+    if fmt == EnumImagePixelFormat.IPF_BINARY_8:
+        arr = np.frombuffer(buf, dtype=np.uint8).reshape((h, stride))
+        gray = arr[:, :w]
+        return cv2.cvtColor(gray, cv2.COLOR_GRAY2RGB)
+    if fmt == EnumImagePixelFormat.IPF_BINARY_8_INVERTED:
+        # DCV returns inverted 8-bit binary (0=white, 255=black); flip it back.
+        arr = np.frombuffer(buf, dtype=np.uint8).reshape((h, stride))
+        gray = 255 - arr[:, :w]
+        return cv2.cvtColor(gray, cv2.COLOR_GRAY2RGB)
+    if fmt in (EnumImagePixelFormat.IPF_BINARY, EnumImagePixelFormat.IPF_BINARYINVERTED):
+        # 1-bit packed binary: unpack bits and scale to 0/255.
+        arr = np.frombuffer(buf, dtype=np.uint8).reshape((h, stride))
+        bits = np.unpackbits(arr, axis=1)[:, :w] * 255
+        if fmt == EnumImagePixelFormat.IPF_BINARYINVERTED:
+            bits = 255 - bits
+        return cv2.cvtColor(bits.astype(np.uint8), cv2.COLOR_GRAY2RGB)
+    if fmt == EnumImagePixelFormat.IPF_RGB_888:
+        arr = np.frombuffer(buf, dtype=np.uint8).reshape((h, stride))
+        arr = arr[:, :w * 3]
+        return arr.reshape((h, w, 3))
+    if fmt == EnumImagePixelFormat.IPF_BGR_888:
+        arr = np.frombuffer(buf, dtype=np.uint8).reshape((h, stride))
+        arr = arr[:, :w * 3]
+        bgr = arr.reshape((h, w, 3))
+        return cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+    if fmt == EnumImagePixelFormat.IPF_ARGB_8888:
+        arr = np.frombuffer(buf, dtype=np.uint8).reshape((h, stride))
+        arr = arr[:, :w * 4]
+        return cv2.cvtColor(arr.reshape((h, w, 4)), cv2.COLOR_RGBA2RGB)
+    # Fallback: assume RGB
+    arr = np.frombuffer(buf, dtype=np.uint8).reshape((h, stride))
+    arr = arr[:, :w * 3]
+    return arr.reshape((h, w, 3))
+
+
 class DCVScanner:
     def __init__(self, license_key: str = DEFAULT_LICENSE_KEY):
         self.license_key = license_key
@@ -59,60 +127,11 @@ class DCVScanner:
         self._initialized = True
         return EnumErrorCode.EC_OK, "OK"
 
-    def _np_to_image_data(self, image: np.ndarray) -> ImageData:
-        """Convert RGB numpy array to DCV ImageData."""
-        if image.ndim == 2:
-            # Grayscale
-            h, w = image.shape
-            stride = image.strides[0]
-            return ImageData(image.tobytes(), w, h, stride, EnumImagePixelFormat.IPF_GRAYSCALED)
-        if image.shape[2] == 3:
-            h, w = image.shape[:2]
-            stride = image.strides[0]
-            return ImageData(image.tobytes(), w, h, stride, EnumImagePixelFormat.IPF_RGB_888)
-        if image.shape[2] == 4:
-            h, w = image.shape[:2]
-            stride = image.strides[0]
-            return ImageData(image.tobytes(), w, h, stride, EnumImagePixelFormat.IPF_ARGB_8888)
-        # Fallback: assume RGB
-        rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        h, w = rgb.shape[:2]
-        stride = rgb.strides[0]
-        return ImageData(rgb.tobytes(), w, h, stride, EnumImagePixelFormat.IPF_RGB_888)
-
-    def _image_data_to_np(self, image_data: ImageData) -> np.ndarray:
-        """Convert DCV ImageData to RGB numpy array."""
-        fmt = image_data.get_image_pixel_format()
-        w = image_data.get_width()
-        h = image_data.get_height()
-        stride = image_data.get_stride()
-        buf = image_data.get_bytes()
-        if fmt == EnumImagePixelFormat.IPF_GRAYSCALED:
-            arr = np.frombuffer(buf, dtype=np.uint8).reshape((h, stride))
-            return arr[:, :w]
-        if fmt == EnumImagePixelFormat.IPF_RGB_888:
-            arr = np.frombuffer(buf, dtype=np.uint8).reshape((h, stride))
-            arr = arr[:, :w * 3]
-            return arr.reshape((h, w, 3))
-        if fmt == EnumImagePixelFormat.IPF_BGR_888:
-            arr = np.frombuffer(buf, dtype=np.uint8).reshape((h, stride))
-            arr = arr[:, :w * 3]
-            bgr = arr.reshape((h, w, 3))
-            return cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
-        if fmt == EnumImagePixelFormat.IPF_ARGB_8888:
-            arr = np.frombuffer(buf, dtype=np.uint8).reshape((h, stride))
-            arr = arr[:, :w * 4]
-            return cv2.cvtColor(arr.reshape((h, w, 4)), cv2.COLOR_RGBA2RGB)
-        # Fallback: assume RGB
-        arr = np.frombuffer(buf, dtype=np.uint8).reshape((h, stride))
-        arr = arr[:, :w * 3]
-        return arr.reshape((h, w, 3))
-
     def detect_document(self, image: np.ndarray) -> Optional[List[QuadPoint]]:
         """Detect document boundaries in a RGB numpy image. Returns quad points or None."""
         if not self._initialized:
             self.init()
-        img_data = self._np_to_image_data(image)
+        img_data = np_to_image_data(image)
         result = self.cvr.capture(img_data, DETECT_TEMPLATE)
         if result.get_error_code() != EnumErrorCode.EC_OK:
             return None
@@ -146,7 +165,7 @@ class DCVScanner:
         """Normalize document using provided quad points. If None, use full image."""
         if not self._initialized:
             self.init()
-        img_data = self._np_to_image_data(image)
+        img_data = np_to_image_data(image)
         template_name = NORMALIZE_TEMPLATE
 
         if quad_points and len(quad_points) == 4:
@@ -173,7 +192,7 @@ class DCVScanner:
         img_data = item.get_image_data()
         if img_data is None:
             return None
-        return self._image_data_to_np(img_data)
+        return image_data_to_np(img_data)
 
     def normalize_file(self, file_path: str, quad_points: Optional[List[QuadPoint]] = None) -> Optional[np.ndarray]:
         if not self._initialized:
@@ -199,7 +218,7 @@ class DCVScanner:
         img_data = items[0].get_image_data()
         if img_data is None:
             return None
-        return self._image_data_to_np(img_data)
+        return image_data_to_np(img_data)
 
 
 # ── Image processing helpers ──
@@ -270,13 +289,20 @@ def is_quad_stable(current: List[QuadPoint], previous: List[QuadPoint], iou_thre
 def apply_filter(image: np.ndarray, mode: str) -> np.ndarray:
     if mode == "color":
         return image.copy()
+
+    processor = ImageProcessor()
+    img_data = np_to_image_data(image)
+
     if mode == "grayscale":
-        gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-        return cv2.cvtColor(gray, cv2.COLOR_GRAY2RGB)
+        result_data = processor.convert_to_gray(img_data)
+        return image_data_to_np(result_data)
+
     if mode == "binary":
-        gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-        _, binary = cv2.threshold(gray, 140, 255, cv2.THRESH_BINARY)
-        return cv2.cvtColor(binary, cv2.COLOR_GRAY2RGB)
+        # Use global threshold 140 to match previous OpenCV behavior.
+        # invert=True yields black text on white background.
+        result_data = processor.convert_to_binary_global(img_data, threshold=140, invert=True)
+        return image_data_to_np(result_data)
+
     return image.copy()
 
 

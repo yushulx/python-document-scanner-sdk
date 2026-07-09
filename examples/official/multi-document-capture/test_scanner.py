@@ -57,9 +57,22 @@ def test_filters():
     img = load_image(TEST_INPUT)
     assert img is not None
 
-    for mode in ["color", "grayscale", "binary"]:
-        filtered = apply_filter(img, mode)
-        assert filtered.shape == img.shape, f"Filter {mode} changed dimensions"
+    color = apply_filter(img, "color")
+    assert color.shape == img.shape, "Color filter changed dimensions"
+
+    gray = apply_filter(img, "grayscale")
+    assert gray.shape == img.shape, "Grayscale filter changed dimensions"
+    # DCV grayscale should be RGB with near-equal channels
+    assert np.allclose(gray[:, :, 0], gray[:, :, 1], atol=2)
+    assert np.allclose(gray[:, :, 1], gray[:, :, 2], atol=2)
+
+    binary = apply_filter(img, "binary")
+    assert binary.shape == img.shape, "Binary filter changed dimensions"
+    # Binary should only contain black/white pixels
+    unique = np.unique(binary)
+    assert len(unique) <= 2, f"Binary filter produced {len(unique)} gray levels"
+
+    for mode, filtered in [("color", color), ("grayscale", gray), ("binary", binary)]:
         output_path = os.path.join(OUTPUT_DIR, f"filter_{mode}.png")
         assert save_image(filtered, output_path)
         print(f"  Saved filter {mode}: {output_path}")

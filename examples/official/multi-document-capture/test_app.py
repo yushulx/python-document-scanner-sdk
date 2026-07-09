@@ -10,7 +10,7 @@ from PySide6.QtWidgets import QApplication
 from PySide6.QtTest import QTest
 
 from app import DocumentScannerApp, ProcessFileWorker, np_to_qpixmap
-from scanner import DCVScanner, load_image, save_image
+from scanner import DCVScanner, load_image, save_image, create_default_quad_points
 
 TEST_INPUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "document.png")
 OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_output")
@@ -101,11 +101,48 @@ def test_page_management():
     window.close()
 
 
+def test_edit_widget_scaling():
+    print("\nTesting edit widget scaling...")
+    app = QApplication.instance() or QApplication(sys.argv)
+    window = DocumentScannerApp()
+
+    img = load_image(TEST_INPUT)
+    h, w = img.shape[:2]
+    window.edit_widget.set_image(img)
+    window.edit_widget.set_quad_points(create_default_quad_points(w, h))
+
+    # Portrait image in a wide widget: should fit full height with side bars.
+    window.edit_widget.resize(800, 400)
+    img_rect = window.edit_widget.get_image_rect()
+    widget_size = window.edit_widget.size()
+    assert img_rect.width() <= widget_size.width() + 1
+    assert img_rect.height() <= widget_size.height() + 1
+    assert img_rect.height() == widget_size.height()
+    expected_aspect = w / h
+    actual_aspect = img_rect.width() / img_rect.height()
+    assert abs(expected_aspect - actual_aspect) < 0.02, "Aspect ratio not preserved"
+    print(f"  Wide widget image rect: {img_rect.width()}x{img_rect.height()}")
+
+    # Portrait image in a tall widget: should fit full width with top/bottom bars.
+    window.edit_widget.resize(400, 800)
+    img_rect = window.edit_widget.get_image_rect()
+    widget_size = window.edit_widget.size()
+    assert img_rect.width() <= widget_size.width() + 1
+    assert img_rect.height() <= widget_size.height() + 1
+    assert img_rect.width() == widget_size.width()
+    actual_aspect = img_rect.width() / img_rect.height()
+    assert abs(expected_aspect - actual_aspect) < 0.02, "Aspect ratio not preserved"
+    print(f"  Tall widget image rect: {img_rect.width()}x{img_rect.height()}")
+
+    window.close()
+
+
 def main():
     setup()
     test_app_initialization()
     test_process_file_worker()
     test_page_management()
+    test_edit_widget_scaling()
     print("\nAll app tests passed!")
 
 
