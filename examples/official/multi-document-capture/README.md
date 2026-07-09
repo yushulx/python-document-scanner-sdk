@@ -20,7 +20,7 @@ https://github.com/user-attachments/assets/bdda16cb-335e-47a2-8eb6-8945f4fa5a3f
 ## Requirements
 
 - Python 3.9+
-- Windows 10/11 (camera via OpenCV DShow)
+- Windows, Linux, or macOS
 - USB camera or image files
 
 ## Install

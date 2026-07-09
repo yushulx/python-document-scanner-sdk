@@ -1059,10 +1059,7 @@ class DocumentScannerApp(QMainWindow):
             self.init_status.setText(str(e))
 
     def _init_camera(self):
-        self.cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-        if not self.cap or not self.cap.isOpened():
-            # Try any backend
-            self.cap = cv2.VideoCapture(0)
+        self.cap = cv2.VideoCapture(0)
         if self.cap and self.cap.isOpened():
             self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
             self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
