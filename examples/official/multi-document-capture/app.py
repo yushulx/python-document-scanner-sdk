@@ -643,7 +643,7 @@ class DocumentScannerApp(QMainWindow):
 
         self.scanner = DCVScanner()
         self.thread_pool = QThreadPool()
-        self.thread_pool.setMaxThreadCount(2)
+        self.thread_pool.setMaxThreadCount(4)
 
         self.pages: List[Page] = []
         self.current_page_index = 0
@@ -665,6 +665,7 @@ class DocumentScannerApp(QMainWindow):
         self.latest_detected_quad: Optional[List[QuadPoint]] = None
         self.last_quad: Optional[List[QuadPoint]] = None
         self.stable_counter = 0
+        self._gallery_import_active = False
 
         self.quad_stabilizer = {
             "enabled": True,
@@ -1170,7 +1171,21 @@ class DocumentScannerApp(QMainWindow):
         frame = self.latest_frame.copy()
         original = frame.copy()
 
+        finished = False
+        safety_timeout = QTimer(self)
+        safety_timeout.setSingleShot(True)
+
+        def _do_finish():
+            nonlocal finished
+            if finished:
+                return
+            finished = True
+            safety_timeout.stop()
+            self._finish_capture()
+
         def on_normalized(normalized):
+            if finished:
+                return
             if normalized is not None:
                 self._add_page(normalized, original, quad_points)
                 if auto_captured:
@@ -1179,17 +1194,36 @@ class DocumentScannerApp(QMainWindow):
                 if not auto_captured:
                     self._show_toast("No document detected. Using original image.")
                 self._add_page(original, original, quad_points)
-            self._finish_capture()
+            _do_finish()
+
+        def on_error(msg: str):
+            if finished:
+                return
+            print(f"Capture normalization failed: {msg}")
+            self._show_toast("Capture failed. Please try again.")
+            _do_finish()
+
+        def on_timeout():
+            if finished:
+                return
+            print("Capture normalization timed out")
+            self._show_toast("Capture timed out. Please try again.")
+            _do_finish()
+
+        safety_timeout.timeout.connect(on_timeout)
+        safety_timeout.start(5000)
 
         worker = NormalizeWorker(self.scanner, original, quad_points if (quad_points and len(quad_points) == 4) else None)
         worker.signals.result.connect(on_normalized)
+        worker.signals.error.connect(on_error)
         self.thread_pool.start(worker)
 
     def _finish_capture(self):
         self.is_capture_in_progress = False
         self.capture_btn.set_capturing(False)
-        self.cool_down = True
-        QTimer.singleShot(1500, lambda: setattr(self, "cool_down", False))
+        if not self._gallery_import_active:
+            self.cool_down = True
+            QTimer.singleShot(1500, lambda: setattr(self, "cool_down", False))
 
     def _add_page(self, base_image: np.ndarray, original_image: Optional[np.ndarray], quad_points: Optional[List[QuadPoint]]):
         page = Page(
@@ -1361,6 +1395,7 @@ class DocumentScannerApp(QMainWindow):
         path, _ = QFileDialog.getOpenFileName(self, "Open Image", "", "Images (*.png *.jpg *.jpeg *.bmp *.tiff)")
         if not path:
             return
+        self._gallery_import_active = True
         self._stop_scanning()
         self._show_toast("Processing image...")
 
@@ -1371,6 +1406,7 @@ class DocumentScannerApp(QMainWindow):
                     self._show_scanner_screen()
                     self._start_scanning()
                     self._on_detection_tick()
+                self._gallery_import_active = False
                 return
             if normalized is not None:
                 self._add_page(normalized, image, quad)
@@ -1383,6 +1419,8 @@ class DocumentScannerApp(QMainWindow):
                 self._show_scanner_screen()
                 self._start_scanning()
                 self._on_detection_tick()
+            self._gallery_import_active = False
+            self.cool_down = False
 
         worker = ProcessFileWorker(self.scanner, path)
         worker.signals.result.connect(lambda args: on_done(*args))
@@ -1460,6 +1498,7 @@ class DocumentScannerApp(QMainWindow):
     def _stop_scanning(self):
         self.is_scanning = False
         self.manual_capture_pending = False
+        self.is_processing_frame = False
         self.detection_timer.stop()
         self.camera_widget.set_overlay(None)
         self._reset_stabilizer()
