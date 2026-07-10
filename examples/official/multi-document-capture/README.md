@@ -58,3 +58,7 @@ The tests verify that `document.png` from the parent directory is correctly dete
 ## License
 
 This example uses the default Dynamsoft 1-day trial license. For production use, obtain a valid license from [Dynamsoft](https://www.dynamsoft.com/customer/license/trialLicense/?product=dcv&package=cross-platform).
+
+## Blog
+
+[How to Build a Desktop Document Scanner with Python, PySide6, and Dynamsoft Capture Vision](https://www.dynamsoft.com/codepool/build-desktop-document-scanner-python-pyside6.html)
