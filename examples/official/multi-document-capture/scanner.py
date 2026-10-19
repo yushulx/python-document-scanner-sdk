@@ -20,9 +20,9 @@ from dynamsoft_capture_vision_bundle import (
 )
 
 
-DEFAULT_LICENSE_KEY = (
-    "DLS2eyJoYW5kc2hha2VDb2RlIjoiMjAwMDAxLTE2NDk4Mjk3OTI2MzUiLCJvcmdhbml6YXRpb25JRCI6"
-    "IjIwMDAwMSIsInNlc3Npb25QYXNzd29yZCI6IndTcGR6Vm05WDJrcEQ5YUoifQ=="
+DEFAULT_LICENSE_KEY = os.environ.get(
+    "DYNAMSOFT_LICENSE_KEY",
+    "DLS2eyJvcmdhbml6YXRpb25JRCI6IjIwMDAwMSJ9",
 )
 
 DETECT_TEMPLATE = "DetectDocumentBoundaries_Default"
@@ -46,6 +46,7 @@ class Page:
 
 def np_to_image_data(image: np.ndarray) -> ImageData:
     """Convert RGB or grayscale numpy array to DCV ImageData."""
+    image = np.ascontiguousarray(image)
     if image.ndim == 2:
         h, w = image.shape
         stride = image.strides[0]
@@ -121,16 +122,29 @@ class DCVScanner:
         if self._initialized:
             return EnumErrorCode.EC_OK, "OK"
         ec, msg = LicenseManager.init_license(self.license_key)
-        if ec != EnumErrorCode.EC_OK:
+        if ec not in (
+            EnumErrorCode.EC_OK,
+            EnumErrorCode.EC_LICENSE_WARNING,
+            EnumErrorCode.EC_LICENSE_CACHE_USED,
+        ):
             return ec, msg
         self.cvr = CaptureVisionRouter()
         self._initialized = True
         return EnumErrorCode.EC_OK, "OK"
 
+    def _ensure_initialized(self) -> bool:
+        if self._initialized:
+            return True
+        ec, msg = self.init()
+        if not self._initialized:
+            print(f"Scanner initialization failed: {ec}, {msg}")
+            return False
+        return True
+
     def detect_document(self, image: np.ndarray) -> Optional[List[QuadPoint]]:
         """Detect document boundaries in a RGB numpy image. Returns quad points or None."""
-        if not self._initialized:
-            self.init()
+        if not self._ensure_initialized():
+            return None
         img_data = np_to_image_data(image)
         result = self.cvr.capture(img_data, DETECT_TEMPLATE)
         if result.get_error_code() != EnumErrorCode.EC_OK:
@@ -146,8 +160,8 @@ class DCVScanner:
         return [QuadPoint(p.x, p.y) for p in loc.points]
 
     def detect_file(self, file_path: str) -> Optional[List[QuadPoint]]:
-        if not self._initialized:
-            self.init()
+        if not self._ensure_initialized():
+            return None
         result = self.cvr.capture(file_path, DETECT_TEMPLATE)
         if result.get_error_code() != EnumErrorCode.EC_OK:
             return None
@@ -163,8 +177,8 @@ class DCVScanner:
 
     def normalize_document(self, image: np.ndarray, quad_points: Optional[List[QuadPoint]] = None) -> Optional[np.ndarray]:
         """Normalize document using provided quad points. If None, use full image."""
-        if not self._initialized:
-            self.init()
+        if not self._ensure_initialized():
+            return None
         img_data = np_to_image_data(image)
         template_name = NORMALIZE_TEMPLATE
 
@@ -195,8 +209,8 @@ class DCVScanner:
         return image_data_to_np(img_data)
 
     def normalize_file(self, file_path: str, quad_points: Optional[List[QuadPoint]] = None) -> Optional[np.ndarray]:
-        if not self._initialized:
-            self.init()
+        if not self._ensure_initialized():
+            return None
         template_name = NORMALIZE_TEMPLATE
         if quad_points and len(quad_points) == 4:
             ec, msg, settings = self.cvr.get_simplified_settings(template_name)

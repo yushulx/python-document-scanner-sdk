@@ -15,6 +15,9 @@ def showNormalizedImage(name, normalized_image):
 
 def process_file(filename, scanner):
     image = cv2.imread(filename)
+    if image is None:
+        print(f"Error: Could not read image file: {filename}")
+        return
     results = scanner.detect(image)
     normalized_image = None
     for result in results:
@@ -67,12 +70,17 @@ def scandocument():
 
         # set license
         if license == '':
-            docscanner.initLicense(
-                "DLS2eyJoYW5kc2hha2VDb2RlIjoiMjAwMDAxLTE2NDk4Mjk3OTI2MzUiLCJvcmdhbml6YXRpb25JRCI6IjIwMDAwMSIsInNlc3Npb25QYXNzd29yZCI6IndTcGR6Vm05WDJrcEQ5YUoifQ==")
-        else:
-            docscanner.initLicense(license)
+            license = os.environ.get('DYNAMSOFT_LICENSE_KEY', '')
+        if license == '':
+            license = "DLS2eyJvcmdhbml6YXRpb25JRCI6IjIwMDAwMSJ9"
 
-        # initialize mrz scanner
+        error_code, error_message = docscanner.initLicense(license)
+        if not docscanner.isLicenseValid(error_code):
+            print("License initialization failed:", error_code, error_message)
+            print("Pass a valid key with -l/--license or set DYNAMSOFT_LICENSE_KEY.")
+            sys.exit(1)
+
+        # initialize document scanner
         scanner = docscanner.createInstance()
 
         if filename is not None:

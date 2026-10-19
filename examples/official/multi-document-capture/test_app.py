@@ -61,6 +61,30 @@ def test_process_file_worker():
     print(f"  Saved: {output_path}")
 
 
+def test_gallery_import_worker():
+    print("\nTesting gallery import through the thread pool...")
+    app = QApplication.instance() or QApplication(sys.argv)
+    window = DocumentScannerApp()
+    ec, msg = window.scanner.init()
+    assert ec == 0, f"Init failed: {msg}"
+
+    from unittest.mock import patch
+    with patch("app.QFileDialog.getOpenFileName", return_value=(TEST_INPUT, "Images")):
+        window._on_open_file()
+        deadline = time.time() + 15
+        while time.time() < deadline and not window.pages:
+            app.processEvents()
+            time.sleep(0.02)
+
+    assert len(window.pages) == 1, (
+        "Gallery import did not add a page. The QRunnable/WorkerSignals object "
+        "may have been garbage-collected before its result signal was delivered."
+    )
+    assert window.pages[0].base_image is not None
+    print(f"  Imported page shape: {window.pages[0].base_image.shape}")
+    window.close()
+
+
 def test_page_management():
     print("\nTesting page management...")
     app = QApplication.instance() or QApplication(sys.argv)
@@ -141,6 +165,7 @@ def main():
     setup()
     test_app_initialization()
     test_process_file_worker()
+    test_gallery_import_worker()
     test_page_management()
     test_edit_widget_scaling()
     print("\nAll app tests passed!")

@@ -74,6 +74,7 @@ from dynamsoft_capture_vision_bundle import (
     EnumImagePixelFormat,
     EnumErrorCode, 
     EnumPresetTemplate,
+    EnumCapturedResultItemType,
     CaptureVisionRouter,
     LicenseManager,
     ImageData,
@@ -88,6 +89,107 @@ from typing import List, Tuple, Callable, Union, Optional, Any
 import numpy as np
 
 __version__ = DocumentNormalizerModule.get_version()
+
+# License initialization results that still mean the SDK is usable.  A warning or
+# a cached license is expected on some machines (for example after the first
+# activation or when the license server cannot be reached).
+LICENSE_OK_CODES = (
+    EnumErrorCode.EC_OK,
+    EnumErrorCode.EC_LICENSE_WARNING,
+    EnumErrorCode.EC_LICENSE_CACHE_USED,
+)
+
+
+def isLicenseValid(error_code: int) -> bool:
+    """Return True when a ``LicenseManager.init_license()`` result is usable.
+
+    Args:
+        error_code (int): Error code returned by :func:`initLicense`.
+
+    Returns:
+        bool: True for success, license warnings and cached licenses.
+    """
+    return error_code in LICENSE_OK_CODES
+
+
+def _extract_normalized_items(result: Any) -> List[Any]:
+    """Return normalized image items, preferring the enhanced image.
+
+    ``NormalizeDocument_Default`` produces a deskewed colour image and an
+    enhanced image.  The enhanced image is the one that honours the requested
+    ``colour_mode`` (colour/grayscale/binary), so it is preferred when present.
+    """
+    if result is None:
+        return []
+
+    processed = None
+    if hasattr(result, "get_processed_document_result"):
+        processed = result.get_processed_document_result()
+    if processed is not None:
+        items = processed.get_enhanced_image_result_items()
+        if items:
+            return list(items)
+        items = processed.get_deskewed_image_result_items()
+        if items:
+            return list(items)
+
+    items = result.get_items() if hasattr(result, "get_items") else []
+    for wanted_type in (
+        EnumCapturedResultItemType.CRIT_ENHANCED_IMAGE,
+        EnumCapturedResultItemType.CRIT_DESKEWED_IMAGE,
+    ):
+        selected = [
+            item for item in items
+            if getattr(item, "get_type", lambda: None)() == wanted_type
+        ]
+        if selected:
+            return selected
+
+    return [
+        item for item in items
+        if getattr(item, "get_type", lambda: None)()
+        != EnumCapturedResultItemType.CRIT_ORIGINAL_IMAGE
+        and callable(getattr(item, "get_image_data", None))
+    ]
+
+
+def _extract_deskewed_items(result: Any) -> List[Any]:
+    """Return the deskewed/normalized image items from a captured result.
+
+    The Dynamsoft Capture Vision SDK exposes normalized documents through
+    ``CapturedResult.get_processed_document_result()``.  Older code used
+    ``CapturedResult.get_items()`` and assumed an extra original-image item was
+    present; that is no longer guaranteed, so both locations are checked.
+    """
+    if result is None:
+        return []
+
+    processed = None
+    if hasattr(result, "get_processed_document_result"):
+        processed = result.get_processed_document_result()
+    if processed is not None:
+        items = processed.get_deskewed_image_result_items()
+        if items:
+            return list(items)
+
+    items = result.get_items() if hasattr(result, "get_items") else []
+    deskewed = []
+    for item in items:
+        item_type = getattr(item, "get_type", lambda: None)()
+        if item_type == EnumCapturedResultItemType.CRIT_DESKEWED_IMAGE:
+            deskewed.append(item)
+    if deskewed:
+        return deskewed
+
+    # Last-resort fallback: any item that can expose image data, excluding the
+    # original image (which is not the normalized document).
+    return [
+        item for item in items
+        if getattr(item, "get_type", lambda: None)()
+        != EnumCapturedResultItemType.CRIT_ORIGINAL_IMAGE
+        and callable(getattr(item, "get_image_data", None))
+    ]
+
     
 class FrameFetcher(ImageSourceAdapter):
     """
@@ -139,39 +241,36 @@ class MyCapturedResultReceiver(CapturedResultReceiver):
     
     def on_captured_result_received(self, result: Any) -> None:
         output: List['DocumentResult'] = []
-        processed_document_result = result.get_processed_document_result()
-        if processed_document_result is None or len(processed_document_result.get_deskewed_image_result_items()) == 0:
-            pass
-        else:
-            items = processed_document_result.get_deskewed_image_result_items()
-            for index, item in enumerate(processed_document_result.get_deskewed_image_result_items()):
-            
-                image = item.get_image_data()
-                if image is not None:
+        for item in _extract_deskewed_items(result):
+            image = item.get_image_data()
+            if image is None:
+                continue
 
-                    mat = convertNormalizedImage2Mat(image)
+            mat = convertNormalizedImage2Mat(image)
 
-                    location = item.get_source_deskew_quad()
-                    x1 = location.points[0].x
-                    y1 = location.points[0].y
-                    x2 = location.points[1].x
-                    y2 = location.points[1].y
-                    x3 = location.points[2].x
-                    y3 = location.points[2].y
-                    x4 = location.points[3].x
-                    y4 = location.points[3].y
+            location = item.get_source_deskew_quad()
+            if location is None:
+                continue
+            x1 = location.points[0].x
+            y1 = location.points[0].y
+            x2 = location.points[1].x
+            y2 = location.points[1].y
+            x3 = location.points[2].x
+            y3 = location.points[2].y
+            x4 = location.points[3].x
+            y4 = location.points[3].y
 
-                    document = DocumentResult()
-                    document.x1 = x1
-                    document.y1 = y1
-                    document.x2 = x2
-                    document.y2 = y2
-                    document.x3 = x3
-                    document.y3 = y3
-                    document.x4 = x4
-                    document.y4 = y4
-                    document.normalized_image = mat
-                    output.append(document)
+            document = DocumentResult()
+            document.x1 = x1
+            document.y1 = y1
+            document.x2 = x2
+            document.y2 = y2
+            document.x3 = x3
+            document.y3 = y3
+            document.x4 = x4
+            document.y4 = y4
+            document.normalized_image = mat
+            output.append(document)
 
         self.listener(output)
 
@@ -201,25 +300,35 @@ class DocumentResult:
                            If None, creates an empty DocumentResult instance.
         """
 
+        self.x1: int = 0
+        self.y1: int = 0
+        self.x2: int = 0
+        self.y2: int = 0
+        self.x3: int = 0
+        self.y3: int = 0
+        self.x4: int = 0
+        self.y4: int = 0
+
         if item is not None:
             location = item.get_location()
-            x1 = location.points[0].x
-            y1 = location.points[0].y
-            x2 = location.points[1].x
-            y2 = location.points[1].y
-            x3 = location.points[2].x
-            y3 = location.points[2].y
-            x4 = location.points[3].x
-            y4 = location.points[3].y
+            if location is not None:
+                x1 = location.points[0].x
+                y1 = location.points[0].y
+                x2 = location.points[1].x
+                y2 = location.points[1].y
+                x3 = location.points[2].x
+                y3 = location.points[2].y
+                x4 = location.points[3].x
+                y4 = location.points[3].y
 
-            self.x1: int = x1
-            self.y1: int = y1
-            self.x2: int = x2
-            self.y2: int = y2
-            self.x3: int = x3
-            self.y3: int = y3
-            self.x4: int = x4
-            self.y4: int = y4
+                self.x1: int = x1
+                self.y1: int = y1
+                self.x2: int = x2
+                self.y2: int = y2
+                self.x3: int = x3
+                self.y3: int = y3
+                self.x4: int = x4
+                self.y4: int = y4
 
         self.source: Optional[Union[str, np.ndarray]] = None
         self.normalized_image: Optional[np.ndarray] = None
@@ -281,6 +390,8 @@ class DocumentScanner:
         self.receiver = MyCapturedResultReceiver(listener)
         self.cvr_instance.add_result_receiver(self.receiver)
         error_code, error_message = self.cvr_instance.start_capturing(EnumPresetTemplate.PT_DETECT_AND_NORMALIZE_DOCUMENT)
+        if error_code != EnumErrorCode.EC_OK:
+            print("Error:", error_code, error_message)
 
     def clearAsyncListener(self) -> None:
         """
@@ -343,6 +454,9 @@ class DocumentScanner:
             For real-time processing, use detectMatAsync() with addAsyncListener()
             instead of calling this method repeatedly in a loop.
         """
+        if isinstance(input, np.ndarray):
+            input = np.ascontiguousarray(input)
+
         result = self.cvr_instance.capture(input, EnumPresetTemplate.PT_DETECT_DOCUMENT_BOUNDARIES)
 
         output: List[DocumentResult] = []
@@ -351,7 +465,14 @@ class DocumentScanner:
             print("Error:", result.get_error_code(),
                     result.get_error_string())
         else:
-            items = result.get_items()
+            items = [
+                item for item in result.get_items()
+                if callable(getattr(item, "get_location", None))
+            ]
+            if not items:
+                processed = result.get_processed_document_result()
+                if processed is not None:
+                    items = processed.get_detected_quad_result_items()
             for item in items:
                 document = DocumentResult(item)
                 document.source = input
@@ -433,32 +554,39 @@ class DocumentScanner:
         """
         
         error_code, error_message, settings = self.cvr_instance.get_simplified_settings(EnumPresetTemplate.PT_NORMALIZE_DOCUMENT)
+        if error_code != EnumErrorCode.EC_OK or settings is None:
+            print("Error:", error_code, error_message)
+            return None
+
         quad = Quadrilateral()
         quad.points = [Point(document.x1, document.y1), Point(document.x2, document.y2), Point(document.x3, document.y3), Point(document.x4, document.y4)]
         settings.roi = quad
         settings.roi_measured_in_percentage = 0
         settings.document_settings.colour_mode = color
-        error_code, error_message = self.cvr_instance.update_settings(EnumPresetTemplate.PT_NORMALIZE_DOCUMENT,settings)
+        error_code, error_message = self.cvr_instance.update_settings(EnumPresetTemplate.PT_NORMALIZE_DOCUMENT, settings)
+        if error_code != EnumErrorCode.EC_OK:
+            print("Error:", error_code, error_message)
+            return None
+
         result = self.cvr_instance.capture(document.source, EnumPresetTemplate.PT_NORMALIZE_DOCUMENT)
         if result.get_error_code() != EnumErrorCode.EC_OK:
             print("Error:", result.get_error_code(),
                     result.get_error_string())
-        else:
-            items = result.get_items()
-            if len(items) > 1:  
-                item = items[1]
-                image: ImageData = item.get_image_data()
-                if image is not None:
-                
-                    mat = convertNormalizedImage2Mat(image)
-                    if error_code == EnumErrorCode.EC_OK:
-                        document.normalized_image = mat
-                        return mat
-                    else:
-                        print(f"Error converting image to numpy: {error_message}")
-            else:
-                print("No normalized image items found in result")
+            return None
 
+        for item in _extract_normalized_items(result):
+            image: ImageData = item.get_image_data()
+            if image is None:
+                continue
+            try:
+                mat = convertNormalizedImage2Mat(image)
+            except (TypeError, ValueError) as err:
+                print(f"Error converting image to numpy: {err}")
+                continue
+            document.normalized_image = mat
+            return mat
+
+        print("No normalized image items found in result")
         return None
 
 def initLicense(licenseKey: str) -> Tuple[int, str]:
@@ -469,14 +597,16 @@ def initLicense(licenseKey: str) -> Tuple[int, str]:
     The license key enables the SDK functionality.
     
     Args:
-        licenseKey (str): Your Dynamsoft license key. Use "DLS2eyJoYW5kc2hha2VDb2RlIjoiMjAwMDAxLTE2NDk4Mjk3OTI2MzUiLCJvcmdhbml6YXRpb25JRCI6IjIwMDAwMSIsInNlc3Npb25QYXNzd29yZCI6IndTcGR6Vm05WDJrcEQ5YUoifQ==" for trial.
+        licenseKey (str): Your Dynamsoft license key. Use "DLS2eyJvcmdhbml6YXRpb25JRCI6IjIwMDAwMSJ9" for trial.
     
     Returns:
         tuple: (error_code, error_message) indicating license initialization result.
+        Use :func:`isLicenseValid` to check whether the result is usable; license
+        warnings and cached licenses are valid for normal operation.
     
     Example:
         error_code, error_msg = initLicense("YOUR_LICENSE_KEY")
-        if error_code != 0:
+        if not isLicenseValid(error_code):
             print(f"License error: {error_msg}")
     """
     errorCode, errorMsg = LicenseManager.init_license(licenseKey)
@@ -513,20 +643,35 @@ def convertMat2ImageData(mat: np.ndarray) -> ImageData:
     Returns:
         ImageData: Converted image data ready for SDK processing.
     
+    Raises:
+        TypeError: If ``mat`` is not a numpy array.
+        ValueError: If the image does not have 1 or 3 channels.
+
     Note:
         - 3-channel images are treated as RGB_888
         - Single-channel images are treated as grayscale
-        - The function automatically determines stride and pixel format
+        - Non-contiguous arrays are copied so that the reported stride is valid
     """
-    if len(mat.shape) == 3:
-        height, width, channels = mat.shape
-        pixel_format = EnumImagePixelFormat.IPF_RGB_888
-    else:
-        height, width = mat.shape
-        channels = 1
-        pixel_format = EnumImagePixelFormat.IPF_GRAYSCALED
+    if not isinstance(mat, np.ndarray):
+        raise TypeError("mat must be a numpy.ndarray")
 
-    stride = width * channels
+    mat = np.ascontiguousarray(mat)
+    if mat.ndim == 3 and mat.shape[2] == 1:
+        mat = mat[:, :, 0]
+
+    if mat.ndim == 3 and mat.shape[2] == 3:
+        height, width = mat.shape[:2]
+        pixel_format = EnumImagePixelFormat.IPF_RGB_888
+    elif mat.ndim == 2:
+        height, width = mat.shape
+        pixel_format = EnumImagePixelFormat.IPF_GRAYSCALED
+    else:
+        raise ValueError(
+            "Unsupported image shape %r; expected (H, W), (H, W, 1) or (H, W, 3)"
+            % (mat.shape,)
+        )
+
+    stride = mat.strides[0]
     imagedata = ImageData(mat.tobytes(), width, height, stride, pixel_format)
     return imagedata
 
@@ -545,25 +690,80 @@ def convertNormalizedImage2Mat(normalized_image: ImageData) -> np.ndarray:
         numpy.ndarray: OpenCV-compatible image matrix
         
     Supported Formats:
-        - Binary images: Single channel 8-bit
-        - Grayscale images: Single channel 8-bit
-        - Color images: 3-channel RGB format
+        - Binary images (1 bit per pixel): unpacked to single channel 0/255
+        - 8-bit binary images: single channel 0/255
+        - Grayscale images: single channel 8-bit
+        - Color images: 3-channel RGB format (BGR inputs are converted to RGB)
+        - ARGB/ABGR images: alpha channel is dropped
         
     Note:
         The function automatically detects the pixel format and handles
         stride/padding for proper image reconstruction.
     """
-    
     image_bytes = normalized_image.get_bytes()
     width = normalized_image.get_width()
     height = normalized_image.get_height()
-    pixel_format = normalized_image.get_image_pixel_format() 
-    if pixel_format == EnumImagePixelFormat.IPF_GRAYSCALED or pixel_format == EnumImagePixelFormat.IPF_BINARY or pixel_format == EnumImagePixelFormat.IPF_BINARY_8:
-        channels = 1
-        mat = np.frombuffer(image_bytes, dtype=np.uint8).reshape(height, width)
-        return mat
-    
-    else:
+    stride = normalized_image.get_stride()
+    pixel_format = normalized_image.get_image_pixel_format()
+
+    if width <= 0 or height <= 0:
+        raise ValueError(f"Invalid image size: {width}x{height}")
+    if not image_bytes:
+        raise ValueError("ImageData contains no bytes")
+
+    raw = np.frombuffer(image_bytes, dtype=np.uint8)
+    if stride <= 0:
+        stride = len(raw) // height
+    if stride <= 0 or len(raw) < stride * height:
+        raise ValueError(
+            f"ImageData buffer is too small: {len(raw)} bytes, "
+            f"expected at least {stride * height} (stride={stride}, height={height})"
+        )
+
+    if pixel_format in (EnumImagePixelFormat.IPF_BINARY, EnumImagePixelFormat.IPF_BINARYINVERTED):
+        packed = raw[: stride * height].reshape(height, stride)
+        mat = np.unpackbits(packed, axis=1)[:, :width].astype(np.uint8) * 255
+        if pixel_format == EnumImagePixelFormat.IPF_BINARYINVERTED:
+            mat = 255 - mat
+        return np.ascontiguousarray(mat)
+
+    if pixel_format in (
+        EnumImagePixelFormat.IPF_GRAYSCALED,
+        EnumImagePixelFormat.IPF_BINARY_8,
+        EnumImagePixelFormat.IPF_BINARY_8_INVERTED,
+    ):
+        mat = raw[: stride * height].reshape(height, stride)[:, :width]
+        if pixel_format == EnumImagePixelFormat.IPF_BINARY_8_INVERTED:
+            mat = 255 - mat
+        return np.ascontiguousarray(mat)
+
+    if pixel_format in (
+        EnumImagePixelFormat.IPF_ARGB_8888,
+        EnumImagePixelFormat.IPF_ABGR_8888,
+    ):
+        channels = 4
+    elif pixel_format in (
+        EnumImagePixelFormat.IPF_RGB_888,
+        EnumImagePixelFormat.IPF_BGR_888,
+    ):
         channels = 3
-        mat = np.frombuffer(image_bytes, dtype=np.uint8).reshape(height, width, channels)
-        return mat
+    else:
+        raise ValueError(f"Unsupported pixel format: {pixel_format}")
+
+    if stride < width * channels:
+        raise ValueError(
+            f"Invalid stride {stride} for a {width}x{height} image with "
+            f"{channels} channels"
+        )
+
+    rows = raw[: stride * height].reshape(height, stride)
+    mat = rows[:, : width * channels].reshape(height, width, channels)
+
+    if pixel_format == EnumImagePixelFormat.IPF_BGR_888:
+        mat = mat[:, :, ::-1]
+    elif pixel_format == EnumImagePixelFormat.IPF_ARGB_8888:
+        mat = mat[:, :, 1:4]
+    elif pixel_format == EnumImagePixelFormat.IPF_ABGR_8888:
+        mat = mat[:, :, 3:0:-1]
+
+    return np.ascontiguousarray(mat)

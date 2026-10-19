@@ -9,8 +9,12 @@ from utils import *
 
 if __name__ == '__main__':
     errorCode, errorMsg = LicenseManager.init_license(
-        "DLS2eyJoYW5kc2hha2VDb2RlIjoiMjAwMDAxLTE2NDk4Mjk3OTI2MzUiLCJvcmdhbml6YXRpb25JRCI6IjIwMDAwMSIsInNlc3Npb25QYXNzd29yZCI6IndTcGR6Vm05WDJrcEQ5YUoifQ==")
-    if errorCode != EnumErrorCode.EC_OK and errorCode != EnumErrorCode.EC_LICENSE_CACHE_USED:
+        os.environ.get(
+            "DYNAMSOFT_LICENSE_KEY",
+            "DLS2eyJvcmdhbml6YXRpb25JRCI6IjIwMDAwMSJ9",
+        )
+    )
+    if errorCode not in (EnumErrorCode.EC_OK, EnumErrorCode.EC_LICENSE_WARNING, EnumErrorCode.EC_LICENSE_CACHE_USED):
         print("License initialization failed: ErrorCode:",
               errorCode, ", ErrorString:", errorMsg)
     else:
@@ -23,6 +27,9 @@ if __name__ == '__main__':
 
             if image_path.lower() == "q":
                 sys.exit(0)
+
+            if image_path == "":
+                image_path = "../../images/1.png"
 
             if not os.path.exists(image_path):
                 print("The image path does not exist.")
@@ -46,8 +53,20 @@ if __name__ == '__main__':
 
                         mat = convertImageData2Mat(image)
                         # Use Tesseract to determine the character orientation in the warped image
-                        osd_data = pytesseract.image_to_osd(
-                            mat, lang='eng', output_type=Output.DICT)
+                        if len(mat.shape) == 3:
+                            osd_mat = cv2.cvtColor(mat, cv2.COLOR_BGR2RGB)
+                        else:
+                            osd_mat = mat
+                        try:
+                            osd_data = pytesseract.image_to_osd(
+                                osd_mat, lang='eng', output_type=Output.DICT)
+                        except pytesseract.TesseractNotFoundError:
+                            print("Tesseract OCR is not installed or is not on PATH.")
+                            print("Install it from https://tesseract-ocr.github.io/tessdoc/Installation.html")
+                            sys.exit(0)
+                        except pytesseract.TesseractError as err:
+                            print("Tesseract could not determine the orientation:", err)
+                            continue
                         print(osd_data)
                         rotation_angle = osd_data['rotate']
 

@@ -35,7 +35,7 @@ setup(name='document-scanner-sdk',
           "Topic :: Scientific/Engineering",
           "Topic :: Software Development",
       ],
-      install_requires=['opencv-python', 'dynamsoft-capture-vision-bundle'],
+      install_requires=['opencv-python', 'dynamsoft-capture-vision-bundle>=3.6.4000'],
       entry_points={
           'console_scripts': ['scandocument=docscanner.scripts:scandocument']
       },

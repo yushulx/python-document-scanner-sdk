@@ -12,7 +12,8 @@ pip install -r requirements.txt
 - Obtain a [30-day free trial license](https://www.dynamsoft.com/customer/license/trialLicense/?product=ddn) for the Dynamsoft Document Normalizer SDK.
 
 ## How to Run 
-1. **Set the License Key**: Update the license key in `document.py`:
+1. **Set the License Key**: Set the `DYNAMSOFT_LICENSE_KEY` environment variable,
+   or update the fallback key in `document.py`:
 
     ```python
     docscanner.initLicense("LICENSE-KEY")

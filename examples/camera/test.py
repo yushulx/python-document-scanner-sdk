@@ -25,13 +25,21 @@ def showNormalizedImage(name, normalized_image):
     cv2.imshow(name, normalized_image)
 
 
-def process_video(scanner):
+def process_video(scanner, camera_index=0):
     global g_normalized_images, index
     scanner.addAsyncListener(callback)
 
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(camera_index)
+    if not cap.isOpened():
+        print(f"Error: Cannot open camera {camera_index}")
+        scanner.clearAsyncListener()
+        return
+
     while True:
         ret, image = cap.read()
+        if not ret or image is None:
+            print("Error: Cannot read frame from camera")
+            break
 
         ch = cv2.waitKey(1)
         if ch == 27:
@@ -101,8 +109,8 @@ def scandocument():
     Command-line script for scanning documents from camera video stream.
     """
     parser = argparse.ArgumentParser(description='Scan documents from camera')
-    parser.add_argument('-c', '--camera', default=False,
-                        type=bool, help='Whether to show the image')
+    parser.add_argument('-c', '--camera', default=None,
+                        type=int, help='Camera index to open (for example 0)')
     parser.add_argument('-l', '--license', default='',
                         type=str, help='Set a valid license key')
     args = parser.parse_args()
@@ -111,22 +119,26 @@ def scandocument():
         license = args.license
         camera = args.camera
 
-        if camera is False:
+        if camera is None:
             parser.print_help()
             return
 
         # set license
         if license == '':
-            docscanner.initLicense(
-                "DLS2eyJoYW5kc2hha2VDb2RlIjoiMjAwMDAxLTE2NDk4Mjk3OTI2MzUiLCJvcmdhbml6YXRpb25JRCI6IjIwMDAwMSIsInNlc3Npb25QYXNzd29yZCI6IndTcGR6Vm05WDJrcEQ5YUoifQ==")
-        else:
-            docscanner.initLicense(license)
+            license = os.environ.get('DYNAMSOFT_LICENSE_KEY', '')
+        if license == '':
+            license = "DLS2eyJvcmdhbml6YXRpb25JRCI6IjIwMDAwMSJ9"
 
-        # initialize mrz scanner
+        error_code, error_message = docscanner.initLicense(license)
+        if not docscanner.isLicenseValid(error_code):
+            print("License initialization failed:", error_code, error_message)
+            print("Pass a valid key with -l/--license or set DYNAMSOFT_LICENSE_KEY.")
+            sys.exit(1)
+
+        # initialize document scanner
         scanner = docscanner.createInstance()
 
-        if camera is True:
-            process_video(scanner)
+        process_video(scanner, camera)
 
     except Exception as err:
         print(err)

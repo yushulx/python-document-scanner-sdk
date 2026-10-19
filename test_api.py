@@ -1,4 +1,5 @@
 from time import sleep
+import os
 import docscanner
 from docscanner import *
 import numpy as np
@@ -7,8 +8,14 @@ import time
 
 print(docscanner.__version__)
 # set license
-docscanner.initLicense(
-    "DLS2eyJoYW5kc2hha2VDb2RlIjoiMjAwMDAxLTE2NDk4Mjk3OTI2MzUiLCJvcmdhbml6YXRpb25JRCI6IjIwMDAwMSIsInNlc3Npb25QYXNzd29yZCI6IndTcGR6Vm05WDJrcEQ5YUoifQ==")
+license_key = os.environ.get('DYNAMSOFT_LICENSE_KEY', '')
+if license_key == '':
+    license_key = "DLS2eyJvcmdhbml6YXRpb25JRCI6IjIwMDAwMSJ9"
+error_code, error_message = docscanner.initLicense(license_key)
+if not docscanner.isLicenseValid(error_code):
+    print("License initialization failed:", error_code, error_message)
+    print("Set DYNAMSOFT_LICENSE_KEY to a valid Dynamsoft license key.")
+    raise SystemExit(1)
 
 scanner = docscanner.createInstance()
 

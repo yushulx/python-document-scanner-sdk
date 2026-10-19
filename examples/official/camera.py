@@ -1,6 +1,7 @@
 from dynamsoft_capture_vision_bundle import *
 import cv2
 import numpy as np
+import os
 import queue
 from utils import *
 
@@ -24,8 +25,12 @@ class MyCapturedResultReceiver(CapturedResultReceiver):
 
 if __name__ == '__main__':
     errorCode, errorMsg = LicenseManager.init_license(
-        "DLS2eyJoYW5kc2hha2VDb2RlIjoiMjAwMDAxLTE2NDk4Mjk3OTI2MzUiLCJvcmdhbml6YXRpb25JRCI6IjIwMDAwMSIsInNlc3Npb25QYXNzd29yZCI6IndTcGR6Vm05WDJrcEQ5YUoifQ==")
-    if errorCode != EnumErrorCode.EC_OK and errorCode != EnumErrorCode.EC_LICENSE_CACHE_USED:
+        os.environ.get(
+            "DYNAMSOFT_LICENSE_KEY",
+            "DLS2eyJvcmdhbml6YXRpb25JRCI6IjIwMDAwMSJ9",
+        )
+    )
+    if errorCode not in (EnumErrorCode.EC_OK, EnumErrorCode.EC_LICENSE_WARNING, EnumErrorCode.EC_LICENSE_CACHE_USED):
         print("License initialization failed: ErrorCode:",
               errorCode, ", ErrorString:", errorMsg)
     else:

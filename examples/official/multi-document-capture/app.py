@@ -646,6 +646,11 @@ class DocumentScannerApp(QMainWindow):
         self.scanner = DCVScanner()
         self.thread_pool = QThreadPool()
         self.thread_pool.setMaxThreadCount(4)
+        # QRunnable objects are owned by C++ once started. Keep a Python
+        # reference alive until their "finished" signal arrives; otherwise the
+        # WorkerSignals object can be garbage-collected before the worker runs,
+        # so results/errors are never delivered (the UI appears to do nothing).
+        self._active_workers = set()
 
         self.pages: List[Page] = []
         self.current_page_index = 0
@@ -678,6 +683,13 @@ class DocumentScannerApp(QMainWindow):
 
         self._build_ui()
         self._show_license_screen()
+
+    def _start_worker(self, worker):
+        """Start a QRunnable while keeping its Python signals alive."""
+        worker.setAutoDelete(False)
+        self._active_workers.add(worker)
+        worker.signals.finished.connect(lambda w=worker: self._active_workers.discard(w))
+        self.thread_pool.start(worker)
 
     def _build_ui(self):
         self.stack = QStackedWidget()
@@ -1093,7 +1105,7 @@ class DocumentScannerApp(QMainWindow):
         worker = DetectWorker(self.scanner, small)
         worker.signals.result.connect(lambda quad: self._on_detection_result(quad, scale))
         worker.signals.error.connect(lambda msg: self._on_detection_result(None, scale))
-        self.thread_pool.start(worker)
+        self._start_worker(worker)
 
     def _on_detection_result(self, quad: Optional[List[QuadPoint]], scale: float):
         self.is_processing_frame = False
@@ -1215,7 +1227,7 @@ class DocumentScannerApp(QMainWindow):
         worker = NormalizeWorker(self.scanner, original, quad_points if (quad_points and len(quad_points) == 4) else None)
         worker.signals.result.connect(on_normalized)
         worker.signals.error.connect(on_error)
-        self.thread_pool.start(worker)
+        self._start_worker(worker)
 
     def _finish_capture(self):
         self.is_capture_in_progress = False
@@ -1421,9 +1433,19 @@ class DocumentScannerApp(QMainWindow):
             self._gallery_import_active = False
             self.cool_down = False
 
+        def on_error(msg):
+            print(f"Process file failed: {msg}")
+            self._show_toast(f"Image processing failed: {msg}", 4000)
+            self._gallery_import_active = False
+            if self.stack.currentWidget() == self.scanner_screen:
+                self._show_scanner_screen()
+                self._start_scanning()
+                self._on_detection_tick()
+
         worker = ProcessFileWorker(self.scanner, path)
         worker.signals.result.connect(lambda args: on_done(*args))
-        self.thread_pool.start(worker)
+        worker.signals.error.connect(on_error)
+        self._start_worker(worker)
 
     def _on_open_settings(self):
         dialog = SettingsDialog(self.quad_stabilizer, self)
@@ -1467,9 +1489,14 @@ class DocumentScannerApp(QMainWindow):
             else:
                 self._show_toast("Normalization failed. Adjust corners and try again.")
 
+        def on_error(msg):
+            print(f"Normalization failed: {msg}")
+            self._show_toast(f"Normalization failed: {msg}", 4000)
+
         worker = NormalizeWorker(self.scanner, original, new_points)
         worker.signals.result.connect(on_done)
-        self.thread_pool.start(worker)
+        worker.signals.error.connect(on_error)
+        self._start_worker(worker)
 
     def _render_result(self):
         if not self.pages:

@@ -35,7 +35,7 @@ pip install -r requirements.txt
 python main.py
 ```
 
-The app starts with a license screen. The default 1-day trial license is pre-filled. You can replace it with your own Dynamsoft Capture Vision license key.
+The app starts with a license screen. The public trial license is pre-filled. You can replace it with your own Dynamsoft Capture Vision license key.
 
 ## Project Structure
 
@@ -57,7 +57,7 @@ The tests verify that `document.png` from the parent directory is correctly dete
 
 ## License
 
-This example uses the default Dynamsoft 1-day trial license. For production use, obtain a valid license from [Dynamsoft](https://www.dynamsoft.com/customer/license/trialLicense/?product=dcv&package=cross-platform).
+This example uses the public Dynamsoft trial license. For production use, obtain a valid license from [Dynamsoft](https://www.dynamsoft.com/customer/license/trialLicense/?product=dcv&package=cross-platform).
 
 ## Blog
 
